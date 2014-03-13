@@ -1,0 +1,28 @@
+{
+  "name": "Parenchym",
+  "version": "0.3",
+  "authors": [
+    "Dirk Makowski <dmakowski@gmx.net>"
+  ],
+  "description": "Parenchym - Application Framework",
+  "main": "pym/__init__.py",
+  "license": "AGPL",
+  "homepage": "http://parenchym.com",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jqgrid": "~4.5.4",
+    "jquery-ui": "~1.10.3",
+    "jquery": "~2.0.3",
+    "jsrender": "~1.0.0-beta",
+    "jstorage": "~0.4.8",
+    "modernizr": "~2.7.1",
+    "requirejs": "~2.1.10"
+  }
+}

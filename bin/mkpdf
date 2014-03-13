@@ -1,0 +1,3 @@
+#!/bin/bash
+
+pandoc -f markdown -V "mainfont:Linux Biolinum O" --latex-engine xelatex "$@"

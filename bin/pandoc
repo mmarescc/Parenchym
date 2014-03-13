@@ -1,0 +1,5 @@
+#!/bin/sh
+
+pandoc --latex-engine xelatex \
+	--template /home/dm/myprojects/ccPharma/ccPharma/doc/template.latex \
+	"$@"

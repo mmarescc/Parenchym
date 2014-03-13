@@ -1,0 +1,9 @@
+.ui-pnotify-icon {
+  display: inline-block; }
+
+.ui-pnotify-title {
+  position: relative;
+  top: -0.75em;
+  margin-bottom: 0;
+  text-transform: capitalize;
+  width: 80%; }

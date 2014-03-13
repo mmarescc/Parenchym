@@ -1,0 +1,123 @@
+# XXX Put actual secrets into rcsecrets.yaml
+
+# ###########################################
+#   General Settings
+# ###########################################
+
+project.title: Parenchym
+project.subtitle: Application Framework
+project.description: Parenchym - Application Framework based on Pyramid
+project.keywords: Web Framework, Python
+project.version: 0.3
+project.author: Dirk Makowski (http://parenchym.com/)
+project.copyright: "&copy; 2014 Dirk Makowski"
+project.copyright_link: http://parenchym.com/
+
+
+debug: false
+
+
+upload_tmp_dir: "{here}/var/tmp_uploads"
+
+
+# ---[ Encryption ]-------
+
+encryption.secret: SECRET
+
+
+# ---[ Email ]-------
+
+mail.sender: pym@localhost
+mail.host: localhost
+mail.port: 25
+
+
+# ---[ Authentication ]-------
+
+auth.tkt_policy.secret: SECRET
+### # Allows/disables registration of new user accounts, be it
+### # via OpenId or via our UI
+### auth.allow_registration: False
+# Initial password for user 'root'
+auth.user_root.pwd: SECRET
+# Auth provider
+# 'sqlalchemy'
+auth.provider: sqlalchemy
+# Encrypt password using this scheme.
+# Pym uses passlib with one of these schemes:
+#   ldap_plaintext, ldap_salted_sha1, sha512_crypt, pbkdf2_sha512
+auth.password_scheme: pbkdf2_sha512
+
+# ---[ I18N ]-------
+
+pyramid.default_locale_name: en
+i18n.avail_languages:
+- de
+- en
+# allow all languages
+- '*'
+
+# ---[ SASS ]-------
+
+sass.in: "{here}/client/src/sass/pym-1.scss"
+sass.out: "{here}/pym/static/css/styles.css"
+sass.in2: "{here}/client/src/sass/pym-2.scss"
+sass.out2: "{here}/pym/static/css/styles2.css"
+
+
+# ===========================================
+#   Database
+# ===========================================
+
+# {here} is expanded to absolute path which starts with `/'
+# To be absolute, URL must start with 4 `/', hence we type 3 `/' literally here
+db.pym.sa.url : "sqlite:///{here}/var/db/pym.sqlite3"
+
+full_db_errors: false
+
+# ###########################################
+#   Framework
+# ###########################################
+
+# ---[ Pyramid ]-------
+
+pyramid.reload_templates: false
+pyramid.debug_templates: false
+pyramid.debug_authorization: false
+pyramid.debug_notfound: false
+pyramid.debug_routematch: false
+# XXX  Define includes in the paster INI files.
+#      We then can better differentiate between e.g. devel and production
+### # If given in paster INI, these values are separated by \n
+### # Here we give them as list...  DOES THIS MATTER?
+### pyramid.includes:
+### - pyramid_debugtoolbar
+### - pyramid_tm
+### #pyramid.includes: |
+### #  pyramid_debugtoolbar
+### #  pyramid_tm
+
+# ---[ Mako ]-------
+
+# We can use path names or asset specs.
+# If we use asset specs throughout, we do not need to define dirs here.
+### mako.directories :
+### - pym:templates
+
+# If module_directory is empty, compiled templates are stored in memory.
+mako.module_directory : "{here}/var/cache/mako"
+mako.strict_undefined: true
+
+# ---[ Beaker ]-------
+
+session.type : file
+session.data_dir : "{here}/var/sessions/data"
+session.lock_dir : "{here}/var/sessions/lock"
+session.key : SECRET
+session.secret : SECRET
+session.cookie_on_exception : true
+# True: cookie expires when browser is closed, else timestamp or seconds
+session.cookie_expires: true
+# Timeout in seconds
+session.timeout: 1800
+

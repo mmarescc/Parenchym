@@ -1,0 +1,10 @@
+#
+# cron-jobs for PYM
+#
+
+MAILTO=root
+
+# Delete old Mako cache files
+14 22 * * *     find /tmp -maxdepth 1 -name 'tmp*' -mtime +14 -exec rm -rf {} \;
+# Delete old sessions
+16 04 * * *     find /home/myprojects/ccPharma/Pym/var/sessions/data/ -name '*.cache' -mtime +3 -exec rm -f {} \;

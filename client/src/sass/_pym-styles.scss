@@ -1,0 +1,91 @@
+@media (min-width: 768px) {
+  .row { margin-right: 0; margin-left: 0; }
+}
+
+/* sticky footer */
+html {height: 100%;}
+body {height: 100%;}
+
+#page_container {
+  min-height: 100%;
+  > .content {
+    overflow: auto;
+    padding-bottom: $footer-height + $footer-top-margin;
+  }
+}
+
+#page_header_top_row {
+  border-bottom: solid 1px lighten($breadcrumb-border-color, 10);
+  background-color: $breadcrumb-bg;
+}
+
+.page-header {
+  margin: 0;
+  padding: 0 0 $font-size-base/2 0;
+  display: inline-block;
+  h1 {
+    margin: 0;
+  }
+}
+
+#logo {
+  vertical-align: middle;
+}
+.outer-gutter {
+  padding: 0 $grid-gutter-width/2; // simulate bootstrap grid's gutter at outer sides
+}
+
+
+
+body > footer {
+  clear: both;
+  height: $footer-height;
+  margin-top: -($footer-height);
+  position: relative;
+  border: solid 1px $breadcrumb-border-color;
+  border-bottom: none;
+  font-size: 80%;
+  @include border-top-radius($border-radius-base);
+  color: $breadcrumb-color;
+  background-color: $breadcrumb-bg;
+  padding-top: 2px;
+}
+
+
+#breadcrumbs {
+  border: solid 1px $breadcrumb-border-color;
+  border-top: solid 1px white;
+  font-size: 80%;
+  @include border-bottom-radius($border-radius-base);
+  color: $breadcrumb-color;
+  background-color: $breadcrumb-bg;
+  a {
+    color: $breadcrumb-color;
+    &:hover { color: $breadcrumb-active-color; }
+  }
+  .inner {
+    margin-left: -1px; // border-width of breadcrumbs
+  }
+  ul {
+    list-style-type: none;
+    padding: 0px;
+    margin: 0px;
+    li {
+      float: left;
+      margin-left: 0.2em;
+      margin-right: 0.2em;
+    }
+    li.breadcrumb-spacer {
+      font-size: 80%;
+      padding-top: 2px;
+    }
+    li:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+#page_title {
+  font-size: 180%;
+}
+

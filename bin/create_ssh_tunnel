@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Connect to SQL Server
+RICKPROD="5555:192.168.100.33:1433"
+
+ssh -p 227 \
+	-L$RICKPROD \
+	dm@ccp
+
