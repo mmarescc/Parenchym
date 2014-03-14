@@ -259,8 +259,8 @@ def main(argv):
     lgg = logging.getLogger('cli.' + app_name)
 
     # Main parser
-    parser = argparse.ArgumentParser(description="""InitialiseDb command-line
-        interface.""",
+    parser = argparse.ArgumentParser(
+        description="InitialiseDb command-line interface."
     )
     InitialiseDbCli.add_parser_args(parser, (('config', True),
         ('locale', False), ('alembic-config', False)))
