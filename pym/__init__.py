@@ -110,9 +110,9 @@ def includeme(config):
     config.add_static_view('static-pym', 'pym:static')
     config.add_static_view('static-deform', 'deform:static')
 
-    _init_auth(config.registry.settings['rc'])
+    init_auth(config.registry.settings['rc'])
 
 
-def _init_auth(rc):
+def init_auth(rc):
     authmgr_manager.PASSWORD_SCHEME = rc.g('auth.password_scheme',
         authmgr_manager.PASSWORD_SCHEME).lower()
