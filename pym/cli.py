@@ -18,6 +18,10 @@ import pym.testing
 mlgg = logging.getLogger(__name__)
 
 
+class DummyArgs(object):
+    pass
+
+
 class Cli(object):
 
     def __init__(self):
