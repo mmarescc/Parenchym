@@ -13,6 +13,7 @@ SQLAlchemy
 Sphinx
 WebOb
 alembic
+behave
 colander==1.0a5
 crypto
 deform==0.9.9
