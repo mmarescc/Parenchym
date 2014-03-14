@@ -402,18 +402,49 @@ class JsonLobType(TypeDecorator):
 
 # ===[ IMPORTABLE SETUP FUNCS ]=======
 
-def init(config, prefix):
-    """Initializes SQLAlchemy by rc settings.
+def init(settings, prefix):
+    """
+    Initializes scoped SQLAlchemy by rc settings.
 
-    Creates engine, binds session and declarative base.
+    Creates engine, binds a scoped session and declarative base.
+    Call this function for global initialization of the WebApp.
+
+    Initialises the module globals ``DbEngine``, ``DbSession`` and ``DbBase``.
+    The session is joined into the Zope Transaction Manager.
+
+    :param settings: Dict with settings
+    :param prefix: Prefix for SQLAlchemy settings
     """
     global DbEngine
-    DbEngine = engine_from_config(config, prefix,
+    DbEngine = engine_from_config(settings, prefix,
         json_serializer=pym.lib.json_serializer,
         json_deserializer=pym.lib.json_deserializer
     )
     DbSession.configure(bind=DbEngine)
     DbBase.metadata.bind = DbEngine
+
+
+def init_unscoped(settings, prefix):
+    """
+    Initializes unscoped SQLAlchemy by rc settings.
+
+    Creates engine, binds a scoped session and declarative base.
+    Call this function for global initialization of the WebApp.
+
+    Initialises the module globals ``DbEngine``, ``DbSession`` and ``DbBase``.
+    This session has no external transaction manager.
+
+    :param settings: Dict with settings
+    :param prefix: Prefix for SQLAlchemy settings
+    :return: Dict with ``DbEngine``, ``DbSession`` and ``DbBase``.
+    """
+    global DbEngine, DbSession, DbBase
+    DbEngine = engine_from_config(settings, prefix,
+        json_serializer=pym.lib.json_serializer,
+        json_deserializer=pym.lib.json_deserializer
+    )
+    DbSession = sessionmaker(bind=DbEngine)
+    DbBase = declarative_base(bind=DbEngine)
 
 
 def create_all():
