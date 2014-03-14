@@ -253,26 +253,29 @@ class InitialiseDbCli(pym.cli.Cli):
         sess.flush()
 
 
-def main(argv):
-    start_time = time.time()
-    app_name = os.path.basename(argv[0])
-    lgg = logging.getLogger('cli.' + app_name)
-
+def parse_args(AppClass):
     # Main parser
     parser = argparse.ArgumentParser(
         description="InitialiseDb command-line interface."
     )
-    InitialiseDbCli.add_parser_args(parser, (('config', True),
+    AppClass.add_parser_args(parser, (('config', True),
         ('locale', False), ('alembic-config', False)))
     parser.add_argument(
         '--schema-only',
         action='store_true',
         help="""Create only schema without inserting users etc."""
     )
+    return parser.parse_args()
 
-    # Parse args and run command
-    args = parser.parse_args()
 
+def main(argv=None):
+    if not argv:
+        argv = sys.argv
+    start_time = time.time()
+    app_name = os.path.basename(argv[0])
+    lgg = logging.getLogger('cli.' + app_name)
+
+    args = parse_args(InitialiseDbCli)
     runner = InitialiseDbCli()
     runner.init_app(args, lgg=lgg, setup_logging=True)
     # noinspection PyBroadException
@@ -282,12 +285,12 @@ def main(argv):
         lgg.exception(exc)
         lgg.fatal('Program aborted!')
     else:
-        lgg.info('Finished.')
+        lgg.info('Finished in {} secs.'.format(time.time() - start_time))
         lgg.info("Directory 'install/db' may contain SQL scripts"
               " you have to run manually.")
     finally:
-        lgg.debug('{} secs'.format(time.time() - start_time))
-        return runner
+        # Do some cleanup or saving etc.
+        pass
 
 
 if __name__ == '__main__':
