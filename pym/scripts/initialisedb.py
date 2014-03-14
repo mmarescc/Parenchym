@@ -253,12 +253,12 @@ class InitialiseDbCli(pym.cli.Cli):
         sess.flush()
 
 
-def parse_args(AppClass):
+def parse_args(app_class):
     # Main parser
     parser = argparse.ArgumentParser(
         description="InitialiseDb command-line interface."
     )
-    AppClass.add_parser_args(parser, (('config', True),
+    app_class.add_parser_args(parser, (('config', True),
         ('locale', False), ('alembic-config', False)))
     parser.add_argument(
         '--schema-only',
