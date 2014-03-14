@@ -103,7 +103,7 @@ class DbResNode(DbBase, DefaultMixin):
     """
     Short title of the resource.
 
-    Will be the used in breadcrumbs and menus.
+    Will be used in breadcrumbs and menus.
     """
     kind = sa.Column(sa.Unicode(255), nullable=False)
     """
@@ -125,18 +125,6 @@ class DbResNode(DbBase, DefaultMixin):
 
     E.g. 'pym.resmgr:IRes'
     """
-    avail_perms = sa.Column(JSON(), nullable=True)
-    """
-    List of available permissions for this resource which are used in ACL
-    (JSON array).
-    """
-
-    # noinspection PyUnusedLocal
-    @validates('avail_perms')
-    def validate_avail_perms(self, key, avail_perms):
-        if isinstance(avail_perms, str):
-            avail_perms = [s.strip() for s in avail_perms.split(',')]
-        return sorted(avail_perms)
 
     children = relationship("DbResNode",
         order_by=lambda: [DbResNode.sortix, DbResNode.name],
