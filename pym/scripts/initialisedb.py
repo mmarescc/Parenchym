@@ -274,8 +274,7 @@ def main(argv):
     args = parser.parse_args()
 
     runner = InitialiseDbCli()
-    runner.init_app(args, lgg=lgg, rc_key='import_licenses', setup_logging=True)
-    # Init session after app!
+    runner.init_app(args, lgg=lgg, setup_logging=True)
     # noinspection PyBroadException
     try:
         runner.run()
@@ -287,7 +286,6 @@ def main(argv):
         lgg.info("Directory 'install/db' may contain SQL scripts"
               " you have to run manually.")
     finally:
-        # Make sure we save all collected data
         lgg.debug('{} secs'.format(time.time() - start_time))
         return runner
 
