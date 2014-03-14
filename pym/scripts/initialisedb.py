@@ -253,11 +253,9 @@ class InitialiseDbCli(pym.cli.Cli):
         sess.flush()
 
 
-# noinspection PyUnusedLocal
-def main(argv=sys.argv):
-
+def main(argv):
     start_time = time.time()
-    app_name = os.path.basename(sys.argv[0])
+    app_name = os.path.basename(argv[0])
     lgg = logging.getLogger('cli.' + app_name)
 
     # Main parser
@@ -295,4 +293,4 @@ def main(argv=sys.argv):
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
