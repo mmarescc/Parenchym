@@ -442,7 +442,7 @@ def init_unscoped(settings, prefix):
     DbEngine = engine_from_config(settings, prefix,
         json_serializer=pym.lib.json_serializer,
         json_deserializer=pym.lib.json_deserializer
-    )
+    ),
     DbSession = sessionmaker(bind=DbEngine)
     DbBase = declarative_base(bind=DbEngine)
 
