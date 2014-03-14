@@ -5,9 +5,6 @@ import logging
 import sys
 import os
 
-import sqlalchemy as sa
-import sqlalchemy.orm
-import sqlalchemy.ext.declarative
 from zope.sqlalchemy import mark_changed
 
 from alembic.config import Config
@@ -21,11 +18,11 @@ from pym.authmgr.const import *
 
 import pym.cli
 import pym.lib
-import pym.libuno
 import pym.models
 
 
-SQL_VW_PRINCIPAL_BROWSE = """CREATE VIEW pym.vw_principal_browse AS
+SQL_VW_PRINCIPAL_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_principal_browse AS
 (
     SELECT principal.id                      AS id,
            principal.is_enabled              AS is_enabled,
@@ -61,7 +58,8 @@ SQL_VW_PRINCIPAL_BROWSE = """CREATE VIEW pym.vw_principal_browse AS
     LEFT OUTER JOIN pym.principal AS e ON pym.principal.editor = e.id
 );"""
 
-SQL_VW_ROLE_BROWSE = """CREATE VIEW pym.vw_role_browse AS
+SQL_VW_ROLE_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_role_browse AS
 (
     SELECT role.id                      AS id,
            role.name                    AS name,
@@ -77,7 +75,8 @@ SQL_VW_ROLE_BROWSE = """CREATE VIEW pym.vw_role_browse AS
     LEFT OUTER JOIN pym.principal AS e ON pym.role.editor = e.id
 );"""
 
-SQL_VW_ROLEMEMBER_BROWSE = """CREATE VIEW pym.vw_rolemember_browse AS
+SQL_VW_ROLEMEMBER_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_rolemember_browse AS
 (
     SELECT rm.id                             AS id,
            principal.id                      AS principal_id,
@@ -109,14 +108,16 @@ class InitialiseDbCli(pym.cli.Cli):
         super().__init__()
 
     def run(self):
-        pym.models.create_all()
 
         sess = pym.models.DbSession()
         with transaction.manager:
-            alembic_cfg = Config(self.args.alembic_config)
-            command.stamp(alembic_cfg, "head")
+            pym.models.create_all()
             self._create_views(sess)
-            self._setup_users(sess)
+            if not self.args.schema_only:
+                self._setup_users(sess)
+            if self.args.alembic_config:
+                alembic_cfg = Config(self.args.alembic_config)
+                command.stamp(alembic_cfg, "head")
             mark_changed(sess)
 
     @staticmethod
@@ -264,7 +265,12 @@ def main(argv=sys.argv):
         interface.""",
     )
     InitialiseDbCli.add_parser_args(parser, (('config', True),
-        ('locale', False), ('alembic-config', True)))
+        ('locale', False), ('alembic-config', False)))
+    parser.add_argument(
+        '--schema-only',
+        action='store_true',
+        help="""Create only schema without inserting users etc."""
+    )
 
     # Parse args and run command
     args = parser.parse_args()
