@@ -47,6 +47,7 @@ class Cli(object):
         self.encoding = None
 
         self._config = None
+        self._sess = None
 
     @staticmethod
     def add_parser_args(parser, which=None):
@@ -97,7 +98,7 @@ class Cli(object):
         """
         Initialises Pyramid application.
 
-        Loads config settings. Initialises SQLAlchemy.
+        Loads config settings. Initialises SQLAlchemy and a session.
         """
         self.args = args
         self.rc_key = rc_key
@@ -131,11 +132,16 @@ class Cli(object):
             settings=settings
         )
 
-        self._config.include(pym)
+        pym.models.init(settings, 'db.pym.sa.')
+        self._sess = pym.models.DbSession()
+        pym.init_auth(rc)
 
     def init_web_app(self, args, lgg=None, rc=None, rc_key=None, setup_logging=True):
         self.init_app(args, lgg=lgg, rc=rc, rc_key=rc_key,
             setup_logging=setup_logging)
+
+        self._config.include(pym)
+
         req = pyramid.request.Request.blank('/',
             base_url='http://localhost:6543')
         self.env = pyramid.paster.bootstrap(
@@ -310,3 +316,19 @@ class Cli(object):
         if self.args.order:
             qry = qry.order_by(self.args.order)
         return qry
+
+    @property
+    def sess(self):
+        """
+        Initialised DB session.
+
+        The session is created from the web app's default settings and therefore
+        is in most cases a scoped session with transaction extension. If you need
+        a different session, caller may create one itself and set this property
+        accordingly.
+        """
+        return self._sess
+
+    @sess.setter
+    def sess(self, v):
+        self._sess = v
