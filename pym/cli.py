@@ -127,7 +127,6 @@ class Cli(object):
             settings=settings
         )
 
-        pym.models.init(settings, 'db.pym.sa.')
         self._config.include(pym)
 
     def init_web_app(self, args, lgg=None, rc=None, rc_key=None, setup_logging=True):
