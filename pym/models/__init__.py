@@ -46,11 +46,6 @@ import deform.widget
 import pym.exc
 
 
-def _get_current_user():
-    cr = pyramid.threadlocal.get_current_request()
-    return cr.user.uid
-
-
 # ===[ SCHEMA HELPERS ]=======
 
 # noinspection PyUnusedLocal
@@ -126,132 +121,9 @@ Default DB engine.
 """
 
 
-# noinspection PyUnusedLocal
-@colander.deferred
-def _deferred_validate_by_action(node, kw):
-    ac = kw.get('action', None)
-    if ac not in ['create', 'update']:
-        raise pym.exc.PymError("Invalid action (allowed: 'create',"
-            "'update'): '{0}'".format(ac))
-
-    def validator(node, value):
-        if ac == 'create':
-            # ID may or may not be defined for a create.
-            if node.name == 'owner':
-                if value is None or value == '':
-                    raise colander.Invalid(node, node.name + ' must be set')
-            elif node.name == 'ctime':
-                if value is None or value == '':
-                    raise colander.Invalid(node, node.name + ' must be set')
-            elif node.name == 'editor':
-                if value is not None:
-                    raise colander.Invalid(node, node.name + ' must NOT be set')
-            elif node.name == 'mtime':
-                if value is not None:
-                    raise colander.Invalid(node, node.name + ' must NOT be set')
-        else:
-            if node.name == 'id':
-                if value is None or value == '':
-                    raise colander.Invalid(node, node.name + ' must be set')
-            elif node.name == 'owner':
-                if value is not None:
-                    raise colander.Invalid(node, node.name + ' must NOT be set')
-            elif node.name == 'ctime':
-                if value is not None:
-                    raise colander.Invalid(node, node.name + ' must NOT be set')
-            elif node.name == 'editor':
-                if value is None or value == '':
-                    raise colander.Invalid(node, node.name + ' must be set')
-            elif node.name == 'mtime':
-                if value is None or value == '':
-                    raise colander.Invalid(node, node.name + ' must be set')
-
-    return validator
-
-
-DefaultMixinDd = {
-    'id': {
-        'type': colander.Int(),
-        # On create, ID may be missing
-        # On update, ID is required
-        'missing': colander.null,
-        'validator': _deferred_validate_by_action,
-        'title': 'Id',
-        'widget': None,
-        'colModel': {
-            'width': 40,
-            'editable': False
-        }
-    },
-    'owner': {
-        'type': colander.Int(),
-        # On create, owner is required
-        # On update, owner must be missing
-        'missing': colander.null,
-        'title': 'OwnerId',
-        'widget': None,
-        'colModel': {
-            'width': 50,
-            'editable': False
-        }
-    },
-    'editor': {
-        'type': colander.Int(),
-        # On create, editor must be missing
-        # On update, editor is required
-        'missing': colander.null,
-        'title': 'EditorId',
-        'widget': None,
-        'colModel': {
-            'width': 50,
-            'editable': False
-        }
-    },
-    'ctime': {
-        'type': colander.DateTime(default_tzinfo=None),
-        # On create, ctime is required
-        # On update, ctime must be missing
-        'missing': colander.null,
-        'title': 'Created At',
-        'widget': None,
-        'colModel': {
-            'width': 130,
-            'editable': False
-        }
-    },
-    'mtime': {
-        'type': colander.DateTime(default_tzinfo=None),
-        # On create, mtime must be missing
-        # On update, mtime is required
-        'missing': colander.null,
-        'title': 'Edited At',
-        'widget': None,
-        'colModel': {
-            'width': 130,
-            'editable': False
-        }
-    },
-    'owner_display_name': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Owner',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False
-        }
-    },
-    'editor_display_name': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Editor',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False
-        }
-    }
-}
+def _validate_editor(context):
+    if not context.current_parameters['editor']:
+        raise ValueError('Editor must be set on update.')
 
 
 class DefaultMixin(object):
@@ -267,109 +139,41 @@ class DefaultMixin(object):
         nullable=False)
     """Timestamp, creation time."""
 
-    FIND_ONE_FIELD = None
-
+    # noinspection PyMethodParameters
     @declared_attr
-    def owner(cls):
+    def owner_id(cls):
         """ID of user who created this record."""
-        return Column(Integer,
-            ForeignKey("pym.principal.id", onupdate="CASCADE",
-                ondelete="RESTRICT"),
-            nullable=False)
+        return Column(
+            Integer(),
+            ForeignKey(
+                "pym.user.id",
+                onupdate="CASCADE",
+                ondelete="RESTRICT"
+            ),
+            nullable=False
+        )
 
     mtime = Column(DateTime, onupdate=func.current_timestamp(), nullable=True)
     """Timestamp, last edit time."""
 
+    # noinspection PyMethodParameters
     @declared_attr
-    def editor(cls):
+    def editor_id(cls):
         """ID of user who was last editor."""
-        return Column(Integer,
-            ForeignKey("pym.principal.id", onupdate="CASCADE",
-                ondelete="RESTRICT"),
-            nullable=True, onupdate=_get_current_user)
+        return Column(
+            Integer(),
+            ForeignKey(
+                "pym.user.id",
+                onupdate="CASCADE",
+                ondelete="RESTRICT"
+            ),
+            nullable=True,
+            onupdate=_validate_editor)
 
     def dump(self):
         from pym.models import todict
         from pprint import pprint
         pprint(todict(self))
-
-    @classmethod
-    def find_one(cls, criterion):
-        """
-        Some entities have besides the PK column another one that is unique and
-        thus can identify the entity. :method:`find_one()` allows to load such
-        an entity by giving as ``criterion`` either the PK value (int) or a
-        value from that unique column (e.g. a str).
-
-        Since each model may have a different unique column,
-        :attr:`FIND_ONE_FIELD` denotes the name of that column. It is None if
-        that model has no unique column besides the PK.
-
-        E.g. a role can be identified by its ID (PK column) or by its name. So,
-        :method:`find_one` loads either by ``Role.find_one(12)`` or by
-        ``Role.find_one('wheel')``.
-        """
-        sess = DbSession()
-        if isinstance(criterion, int):
-            return sess.query(cls).get(criterion)
-        else:
-            fil = {cls.FIND_ONE_FIELD: criterion}
-            return sess.query(cls).filter_by(**fil).one()
-
-
-class JsonType(TypeDecorator):
-    """Represents an immutable structure as a json-encoded string stored as
-    VARCHAR.
-
-    Usage::
-
-        JsonType(255)
-
-    http://docs.sqlalchemy.org/en/latest/core/types.html#marshal-json-strings
-
-    This type is mapped into SQLAlchemy's Unicode type (i.e. VARCHAR). If you
-    have larger data or, want to store the data outside of DB's regular table
-    (e.g. PostgreSQL's toast), use :py:class:`pym.models.JsonLobType` which maps
-    into TEXT.
-    """
-    impl = Unicode
-
-    def process_bind_param(self, value, dialect):
-        if value is not None:
-            value = json.dumps(value)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            value = json.loads(value)
-        return value
-
-
-class JsonLobType(TypeDecorator):
-    """Represents an immutable structure as a json-encoded string stored as
-    TEXT.
-
-    Usage::
-
-        JsonLobType()
-
-    http://docs.sqlalchemy.org/en/latest/core/types.html#marshal-json-strings
-
-    This type is mapped into SQLAlchemy's UnicodeText type (i.e. TEXT). If you
-    have smaller data or, want to store the data inside of DB's regular table,
-    use :py:class:`pym.models.JsonType` which maps into VARCHAR.
-    """
-    impl = UnicodeText
-
-    def process_bind_param(self, value, dialect):
-        if value is not None:
-            value = json.dumps(value)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            value = json.loads(value)
-        return value
 
 
 # ================================
@@ -553,18 +357,18 @@ def attribute_names(cls, kind="all"):
 
 # http://stackoverflow.com/questions/9766940/how-to-create-an-sql-view-with-sqlalchemy
 
-class CreateView(Executable, ClauseElement):
-    def __init__(self, name, select):
-        self.name = name
-        self.select = select
-
-
-@compiles(CreateView)
-def visit_create_view(element, compiler, **kw):
-    return "CREATE VIEW %s AS %s" % (
-         element.name,
-         compiler.process(element.select, literal_binds=True)
-         )
+# class CreateView(Executable, ClauseElement):
+#     def __init__(self, name, select):
+#         self.name = name
+#         self.select = select
+#
+#
+# @compiles(CreateView)
+# def visit_create_view(element, compiler, **kw):
+#     return "CREATE VIEW %s AS %s" % (
+#          element.name,
+#          compiler.process(element.select, literal_binds=True)
+#          )
 
 # # test data
 # from sqlalchemy import MetaData, Column, Integer

@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-
 import datetime
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import and_
 
 from pym.models import DbSession
-from pym.authmgr.models import (Principal, Role, RoleMember)
+from pym.authmgr.models import (User, Group, GroupMember)
 import pym.security
 from pym.exc import AuthError
 
@@ -14,25 +12,16 @@ from pym.exc import AuthError
 PASSWORD_SCHEME = 'sha512_crypt'
 
 
-_LOADED_PRINCIPALS = {}
-
-
 def load_by_principal(principal):
     """
     Loads a principal instance by principal.
     """
-    p = _LOADED_PRINCIPALS.get(principal, None)
-    if p:
-        if not object_session(p):
-            p = None
-    if not p:
-        sess = DbSession()
-        try:
-            p = sess.query(Principal).filter(
-                Principal.principal == principal).one()
-        except NoResultFound:
-            raise AuthError('Principal not found')
-        _LOADED_PRINCIPALS[principal] = p
+    sess = DbSession()
+    try:
+        p = sess.query(User).filter(
+            User.principal == principal).one()
+    except NoResultFound:
+        raise AuthError('Principal not found')
     return p
 
 
@@ -47,11 +36,11 @@ def _login(filter_, pwd):
     #      --> Complain about not having logged out
     # TODO Check for active session from different IP
     #      --> Automatically kick other session
-    filter_.append(Principal.is_enabled == True)
-    filter_.append(Principal.is_blocked == False)
+    filter_.append(User.is_enabled == True)
+    filter_.append(User.is_blocked == False)
     sess = DbSession()
     try:
-        p = sess.query(Principal).filter(and_(*filter_)).one()
+        p = sess.query(User).filter(and_(*filter_)).one()
     except NoResultFound:
         raise AuthError('Principal not found')
     if not pym.security.pwd_context.verify(pwd, p.pwd):
@@ -76,11 +65,11 @@ def _can_login(filter_, pwd):
     #      --> Complain about not having logged out
     # TODO Check for active session from different IP
     #      --> Automatically kick other session
-    filter_.append(Principal.is_enabled == True)
-    filter_.append(Principal.is_blocked == False)
+    filter_.append(User.is_enabled == True)
+    filter_.append(User.is_blocked == False)
     sess = DbSession()
     try:
-        p = sess.query(Principal).filter(and_(*filter_)).one()
+        p = sess.query(User).filter(and_(*filter_)).one()
     except NoResultFound:
         raise AuthError('Principal not found')
     if not pym.security.pwd_context.verify(pwd, p.pwd):
@@ -107,7 +96,7 @@ def login_by_principal(principal, pwd):
     Raises exception :class:`pym.exc.AuthError` if user is not found.
     """
     _check_credentials(principal, pwd)
-    filter_ = [Principal.principal == principal]
+    filter_ = [User.principal == principal]
     return _login(filter_, pwd)
 
 
@@ -116,7 +105,7 @@ def can_login_by_principal(principal, pwd):
     Checks whether logging in by principal and password would be successful.
     """
     _check_credentials(principal, pwd)
-    filter_ = [Principal.principal == principal]
+    filter_ = [User.principal == principal]
     return _can_login(filter_, pwd)
 
 
@@ -127,7 +116,7 @@ def login_by_email(email, pwd):
     Raises exception :class:`pym.exc.AuthError` if user is not found.
     """
     _check_credentials(email, pwd)
-    filter_ = [Principal.email == email]
+    filter_ = [User.email == email]
     return _login(filter_, pwd)
 
 
@@ -136,7 +125,7 @@ def can_login_by_email(email, pwd):
     Checks whether logging in by email and password would be successful.
     """
     _check_credentials(email, pwd)
-    filter_ = [Principal.email == email]
+    filter_ = [User.email == email]
     return _can_login(filter_, pwd)
 
 
@@ -162,7 +151,7 @@ def logout(uid):
     """
     # TODO Log logout action
     sess = DbSession()
-    p = sess.query(Principal).filter(Principal.id == uid).one()
+    p = sess.query(User).filter(User.id == uid).one()
     p.login_ip = None
     p.login_time = None
     p.access_time = None
@@ -171,30 +160,30 @@ def logout(uid):
     return p
 
 
-def create_principal(data):
+def create_user(data):
     """
-    Creates a new principal record.
+    Creates a new user record.
 
     Data fields:
-    - ``owner``: Required
-    - ``roles``: Optional list of role names. Role 'users' is always
-                 automatically set.
-                 If we provide a value for roles that evaluates to False,
-                 this account is not member of any role.
+    - ``owner_id``: Required
+    - ``groups``:   Optional list of group names. group 'users' is always
+                    automatically set.
+                    If we provide a value for groups that evaluates to False,
+                    this account is not member of any group.
 
     :param data: Dict with data fields
-    :returns: Instance of created principal
+    :returns: Instance of created user
     """
-    # Determine roles this principal will be member of.
+    # Determine groups this user will be member of.
     # Always at least 'users'.
-    if 'roles' in data:
-        if data['roles']:
-            roles = set(data['roles'] + ['users'])
+    if 'groups' in data:
+        if data['groups']:
+            groups = set(data['groups'] + ['users'])
         else:
-            roles = set()
-        del data['roles']
+            groups = set()
+        del data['groups']
     else:
-        roles = ['users']
+        groups = ['users']
     # Make sure the password is encrypted
     if 'pwd' in data:
         if not data['pwd'].startswith(('{', '$')):
@@ -210,42 +199,47 @@ def create_principal(data):
     data['email'] = data['email'].lower()
 
     sess = DbSession()
-    # Create principal
-    p = Principal()
+    # Create user
+    u = User()
     for k, v in data.items():
-        setattr(p, k, v)
-    sess.add(p)
-    sess.flush()  # to get ID of principal
-    # Load/create the roles and memberships
-    for name in roles:
+        setattr(u, k, v)
+    sess.add(u)
+    sess.flush()  # to get ID of user
+    # Load/create the groups and memberships
+    for name in groups:
         try:
-            r = sess.query(Role).filter(Role.name == name).one()
+            g = sess.query(Group).filter(
+                and_(
+                    Group.tenant_id == None,  # must be system group
+                    Group.name == name
+                )
+            ).one()
         except NoResultFound:
-            r = Role()
-            r.name = name
-            r.owner = data['owner']
-            sess.add(r)
+            g = Group()
+            g.name = name
+            g.owner_id = data['owner_id']
+            sess.add(g)
             sess.flush()
-        rm = RoleMember()
-        rm.principal_id = p.id
-        rm.role_id = r.id
-        rm.owner = p.owner
-        sess.add(rm)
+        gm = GroupMember()
+        gm.user_id = u.id
+        gm.group_id = g.id
+        gm.owner_id = u.owner_id
+        sess.add(gm)
     sess.flush()
-    return p
+    return u
 
 
-def update_principal(data):
+def update_user(data):
     """
-    Updates a principal.
+    Updates a user.
 
     Data fields:
-    ``id``:     Required. ID of principal to update
-    ``editor``: Required
+    ``id``:     Required. ID of user to update
+    ``editor_id``: Required
     ``mtime``:  Required
 
     :param data: Dict with data fields
-    :returns: Instance of updated principal
+    :returns: Instance of updated user
     """
     # Make sure the password is encrypted
     if 'pwd' in data:
@@ -259,105 +253,106 @@ def update_principal(data):
     if 'email' in data:
         data['email'] = data['email'].lower()
     sess = DbSession()
-    p = sess.query(Principal).filter(Principal.id == data['id']).one()
+    u = sess.query(User).filter(User.id == data['id']).one()
     for k, v in data.items():
-        setattr(p, k, v)
+        setattr(u, k, v)
     # If display_name is emptied, use principal
-    if not p.display_name:
-        p.display_name = p.principal
+    if not u.display_name:
+        u.display_name = u.principal
     sess.flush()
-    return p
+    return u
 
 
-def delete_principal(id_):
+def delete_user(id_):
     """
-    Deletes a principal.
+    Deletes a user.
 
-    :param id_: ID of principal to delete
+    :param id_: ID of user to delete
     """
     sess = DbSession()
-    p = sess.query(Principal).filter(Principal.id == id_).one()
-    sess.delete(p)
+    u = sess.query(User).filter(User.id == id_).one()
+    sess.delete(u)
     sess.flush()
 
 
-def create_role(data):
+def create_group(data):
     """
-    Creates a new role record.
+    Creates a new group record.
 
     Data fields:
-    - ``owner``: Required
+    - ``owner_id``: Required
     :param data: Dict with data fields
-    :returns: Instance of created role
+    :returns: Instance of created group
     """
     sess = DbSession()
-    r = Role()
+    g = Group()
     for k, v in data.items():
-        setattr(r, k, v)
-    sess.add(r)
+        setattr(g, k, v)
+    sess.add(g)
     sess.flush()
-    return r
+    return g
 
 
-def update_role(data):
+def update_group(data):
     """
-    Updates a role.
+    Updates a group.
 
     Data fields:
-    ``id``:     Required. ID of role to update
-    ``editor``: Required
+    ``id``:     Required. ID of group to update
+    ``editor_id``: Required
     ``mtime``:  Required
 
     :param data: Dict with data fields
-    :returns: Instance of updated role
+    :returns: Instance of updated group
     """
     sess = DbSession()
-    r = sess.query(Role).filter(Role.id == data['id']).one()
+    g = sess.query(Group).filter(Group.id == data['id']).one()
     for k, v in data.items():
-        setattr(r, k, v)
+        setattr(g, k, v)
     sess.flush()
-    return r
+    return g
 
 
-def delete_role(id_):
+def delete_group(id_):
     """
-    Deletes a role.
+    Deletes a group.
 
-    :param id_: ID of role to delete
+    :param id_: ID of group to delete
     """
     sess = DbSession()
-    r = sess.query(Role).filter(Role.id == id_).one()
-    sess.delete(r)
+    g = sess.query(Group).filter(Group.id == id_).one()
+    sess.delete(g)
     sess.flush()
 
 
-def create_rolemember(data):
+def create_group_member(data):
     """
-    Creates a new rolemember record.
+    Creates a new group_member record.
 
     Data fields:
-    - ``owner``:        Required
-    - ``principal_id``: Required
-    - ``role_id``:      Required
+    - ``owner_id``:        Required
+    - ``group_id``:      Required
+    - ``user_id``: Required if ``other_group_id`` is not given
+    - ``other_group_id``: Required if ``user_id`` is not given
     :param data: Dict with data fields
-    :returns: Instance of created rolemember
+    :returns: Instance of created group_member
     """
     sess = DbSession()
-    rm = RoleMember()
+    gm = GroupMember()
     for k, v in data.items():
-        setattr(rm, k, v)
-    sess.add(rm)
+        setattr(gm, k, v)
+    sess.add(gm)
     sess.flush()
-    return rm
+    return gm
 
 
-def delete_rolemember(id_):
+def delete_group_member(id_):
     """
-    Deletes a rolemember.
+    Deletes a group_member.
 
-    :param id_: ID of rolemember to delete
+    :param id_: ID of group_member to delete
     """
     sess = DbSession()
-    rm = sess.query(RoleMember).filter(RoleMember.id == id_).one()
-    sess.delete(rm)
+    gm = sess.query(GroupMember).filter(GroupMember.id == id_).one()
+    sess.delete(gm)
     sess.flush()

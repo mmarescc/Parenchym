@@ -114,8 +114,8 @@ class PymCli(pym.cli.Cli):
         super().__init__()
 
     def list_principals(self):
-        from pym.authmgr.models import Principal
-        qry = self._build_query(Principal)
+        from pym.authmgr.models import User
+        qry = self._build_query(User)
         data = self._db_data_to_list(qry,
             fkmaps=dict(roles=lambda it: it.name))
         self._print(data)
@@ -138,8 +138,8 @@ class PymCli(pym.cli.Cli):
         rs = usrmanager.delete_principal(self.args.id)
 
     def list_roles(self):
-        from pym.authmgr.models import Role
-        qry = self._build_query(Role)
+        from pym.authmgr.models import Group
+        qry = self._build_query(Group)
         data = self._db_data_to_list(qry)
         self._print(data)
 
@@ -160,21 +160,21 @@ class PymCli(pym.cli.Cli):
         rs = usrmanager.delete_role(self.args.id)
 
     def list_rolemembers(self):
-        from pym.authmgr.models import Principal, Role, RoleMember
+        from pym.authmgr.models import User, Group, GroupMember
         # Outer join to make orphans visible
-        qry = self._build_query(RoleMember) \
-            .outerjoin(Role) \
-            .outerjoin(Principal, RoleMember.principal_id == Principal.id) \
+        qry = self._build_query(GroupMember) \
+            .outerjoin(Group) \
+            .outerjoin(User, GroupMember.principal_id == User.id) \
             .create_columns(
-                RoleMember.id,
-                Role.id,
-                Role.name,
-                Principal.id,
-                Principal.principal,
-                Principal.is_enabled,
-                Principal.is_blocked,
-                RoleMember.owner,
-                RoleMember.ctime
+                GroupMember.id,
+                Group.id,
+                Group.name,
+                User.id,
+                User.principal,
+                User.is_enabled,
+                User.is_blocked,
+                GroupMember.owner,
+                GroupMember.ctime
             )
         fields = ['id', 'role_id', 'role', 'principal_id', 'principal',
             'is_enabled', 'is_blocked', 'owner', 'ctime']

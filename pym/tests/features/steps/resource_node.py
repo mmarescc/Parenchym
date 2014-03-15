@@ -1,13 +1,13 @@
 from behave import (
     given, when, then
 )
-from pym.resmgr.models import DbResNode
+from pym.resmgr.models import ResourceNode
 from pym.authmgr.const import UNIT_TESTER_UID
 
 
 @given('my root node is {name}/{kind}')
 def step_impl(context, name, kind):
-    context.root_node = DbResNode.create_root(context.sess,
+    context.root_node = ResourceNode.create_root(context.sess,
         owner=UNIT_TESTER_UID, name=name, kind=kind)
 
 
@@ -19,7 +19,7 @@ def step_impl(context):
 
 @then('I should find new root node in restree table')
 def step_impl(context):
-    root_node = DbResNode.load_root(context.sess, context.root_node.name)
+    root_node = ResourceNode.load_root(context.sess, context.root_node.name)
     assert root_node
 
 
@@ -30,14 +30,14 @@ def step_impl(context):
 def step_impl(context, name, kind):
     context.name = name
     context.kind = kind
-    context.existing_root_node = DbResNode.create_root(context.sess,
+    context.existing_root_node = ResourceNode.create_root(context.sess,
         owner=UNIT_TESTER_UID, name=name, kind=kind)
     context.sess.flush()
 
 
 @when('I create a new root node entry with this name and kind')
 def step_impl(context):
-    context.new_root_node = DbResNode.create_root(context.sess,
+    context.new_root_node = ResourceNode.create_root(context.sess,
         owner=UNIT_TESTER_UID, name=context.name, kind=context.kind)
     context.sess.flush()
 
@@ -54,7 +54,7 @@ def step_impl(context):
 def step_impl(context, name, kind):
     context.name = name
     context.kind = kind
-    context.existing_root_node = DbResNode.create_root(context.sess,
+    context.existing_root_node = ResourceNode.create_root(context.sess,
         owner=UNIT_TESTER_UID, name=name, kind=kind)
     context.sess.flush()
 
@@ -67,7 +67,7 @@ def step_impl(context):
 @then('a ValueError exception is thrown')
 def step_impl(context):
     try:
-        DbResNode.create_root(context.sess,
+        ResourceNode.create_root(context.sess,
             owner=UNIT_TESTER_UID, name=context.name, kind=context.other_kind)
     except ValueError:
         assert True

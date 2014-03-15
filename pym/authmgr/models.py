@@ -8,13 +8,12 @@ import colander
 from pyramid.security import Allow
 
 from pym.models import (
-    DbBase, DefaultMixin, DefaultMixinDd,
+    DbBase, DefaultMixin
 )
-from pym.dd import apply_mixin
 import pym.lib
 
 
-__all__ = ['Principal', 'Role', 'RoleMember']
+__all__ = ['User', 'Group', 'GroupMember']
 
 
 class Node(pym.lib.BaseNode):
@@ -26,512 +25,341 @@ class Node(pym.lib.BaseNode):
     def __init__(self, parent):
         super().__init__(parent)
         self._title = 'AuthManager'
-        self['principal'] = NodePrincipal(self)
-        self['role'] = NodeRole(self)
-        self['rolemember'] = NodeRoleMember(self)
+        self['principal'] = NodeUser(self)
+        self['role'] = NodeGroup(self)
+        self['rolemember'] = NodeGroupMember(self)
 
 
-class NodePrincipal(pym.lib.BaseNode):
-    __name__ = 'principal'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'Principals'
-
-
-class NodeRole(pym.lib.BaseNode):
-    __name__ = 'role'
+class NodeUser(pym.lib.BaseNode):
+    __name__ = 'user'
 
     def __init__(self, parent):
         super().__init__(parent)
-        self._title = 'Roles'
+        self._title = 'Users'
 
 
-class NodeRoleMember(pym.lib.BaseNode):
-    __name__ = 'rolemember'
+class NodeGroup(pym.lib.BaseNode):
+    __name__ = 'group'
 
     def __init__(self, parent):
         super().__init__(parent)
-        self._title = 'Rolemembers'
+        self._title = 'Groups'
 
 
-RoleMemberDd = {
-    # This must be the same as ``__tablename__`` in a SQLAlchemy declarative.
-    '__tablename__': 'rolemember',
-    # This must be the same as ``__schema__`` in the table args of a
-    # SQLAlchemy declarative.
-    '__schema__': 'pym',
+class NodeGroupMember(pym.lib.BaseNode):
+    __name__ = 'group_member'
 
-    'role_id': {
-        'type': colander.Int(),
-        'title': 'RoleId',
-        'widget': None,
-        'validator': colander.Length(min=1),
-        'colModel': {
-            'width': 50,
-            'editable': True
-        }
-    },
-    'principal_id': {
-        'type': colander.Int(),
-        'title': 'PrincipalId',
-        'widget': None,
-        'validator': colander.Length(min=1),
-        'colModel': {
-            'width': 50,
-            'editable': True,
-        }
-    }
-}
-apply_mixin(RoleMemberDd, DefaultMixinDd)
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._title = 'Group Members'
+
+    def __repr__(self):
+        return "<{name}(id={id}, group_id='{g}', user_id={u}, " \
+               "other_group_id={o}>".format(
+                   id=self.id, g=self.group_id, u=self.user_id,
+                   o=self.other_group_id, name=self.__name__
+               )
 
 
-class RoleMember(DbBase, DefaultMixin):
-    __tablename__ = "rolemember"
-    __table_args__ = (
-        sa.UniqueConstraint('role_id', 'principal_id'),
-        {
-            'schema': 'pym'
-        }
-    )
-
-    principal_id = sa.Column(sa.BigInteger,
-        sa.ForeignKey("pym.principal.id",
-            onupdate="CASCADE",
-            ondelete="CASCADE"
-        ),
-        nullable=False)
-    role_id = sa.Column(sa.BigInteger,
-        sa.ForeignKey("pym.role.id",
-            onupdate="CASCADE",
-            ondelete="CASCADE"
-        ),
-        nullable=False)
-
-    def __str__(self):
-        return "<RoleMember(id={0}, role_id='{1}', principal_id='{2}'>".format(
-            self.id, self.role_id, self.principal_id)
-
-
-PrincipalDd = {
-    # This must be the same as ``__tablename__`` in a SQLAlchemy declarative.
-    '__tablename__': 'principal',
-    # This must be the same as ``__schema__`` in the table args of a
-    # SQLAlchemy declarative.
-    '__schema__': 'pym',
-
-    'is_enabled': {
-        'type': colander.Bool(),
-        'title': 'Enabled?',
-        'widget': None,
-        'colModel': {
-            'width': 50,
-            'editable': True,
-            'edittype': 'checkbox',
-            'editoptions': {'value': "true:false"},
-            'formoptions': {'elmprefix': None},
-        }
-    },
-    'disable_reason': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Disable Reason',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 200,
-            'editable': True,
-        }
-    },
-    'is_blocked': {
-        'type': colander.Bool(),
-        'title': 'Blocked?',
-        'widget': None,
-        'colModel': {
-            'width': 50,
-            'editable': True,
-            'edittype': 'checkbox',
-            'editoptions': {'value': "true:false"},
-            'formoptions': {'elmprefix': None},
-        }
-    },
-    'blocked_since': {
-        'type': colander.DateTime(),
-        'missing': colander.null,
-        'default': colander.null,
-        'title': 'Blocked Since',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'blocked_until': {
-        'type': colander.DateTime(),
-        'missing': colander.null,
-        'default': colander.null,
-        'title': 'Blocked Until',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'block_reason': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Block Reason',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 200,
-            'editable': False,
-        }
-    },
-    'principal': {
-        'type': colander.String(),
-        'title': 'Principal',
-        'widget': None,
-        'validator': colander.Length(min=1, max=255),
-        'colModel': {
-            'width': 150,
-            'editable': True,
-        }
-    },
-    'pwd': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Password',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 100,
-            'editable': True,
-            'edittype': 'password',
-            'editrules': {'edithidden': True},
-            'hidden': True,
-            'hidedlg': True,
-        }
-    },
-    'pwd_expires': {
-        'type': colander.DateTime(default_tzinfo=None),
-        'title': 'Pwd Expires',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': True,
-        }
-    },
-    'identity_url': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Identity URL',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'email': {
-        'type': colander.String(),
-        'title': 'Email',
-        'widget': None,
-        #        XXX  cannot deepcopy with validator Email   XXX
-        #        , 'validator': colander.Email()
-        'colModel': {
-            'width': 200,
-            'editable': True,
-            #, 'editrules': { 'email': True }
-        }
-    },
-    'first_name': {
-        'type': colander.String(),
-        'title': 'First Name',
-        'widget': None,
-        'validator': colander.Length(max=64),
-        'colModel': {
-            'width': 100,
-            'editable': True,
-        }
-    },
-    'last_name': {
-        'type': colander.String(),
-        'title': 'Last Name',
-        'widget': None,
-        'validator': colander.Length(max=64),
-        'colModel': {
-            'width': 100,
-            'editable': True,
-        }
-    },
-    'display_name': {
-        'type': colander.String(),
-        'title': 'Display Name',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 150,
-            'editable': True,
-        }
-    },
-    'notes': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Notes',
-        'widget': None,
-        'validator': colander.Length(max=1024),
-        'colModel': {
-            'width': 150,
-            'editable': True,
-            'edittype': 'textarea',
-        }
-    },
-    'login_time': {
-        'type': colander.DateTime(),
-        'missing': colander.null,
-        'default': colander.null,
-        'title': 'Login Time',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'login_ip': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Login IP',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'access_time': {
-        'type': colander.DateTime(),
-        'missing': colander.null,
-        'default': colander.null,
-        'title': 'Access Time',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'kick_session': {
-        'type': colander.Bool(),
-        'title': 'Kick?',
-        'widget': None,
-        'colModel': {
-            'width': 50,
-            'editable': True,
-            'edittype': 'checkbox',
-            'editoptions': {'value': "true:false"},
-            'formoptions': {'elmprefix': None},
-        }
-    },
-    'kick_reason': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Kick Reason',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 200,
-            'editable': True,
-        }
-    },
-    'logout_time': {
-        'type': colander.DateTime(),
-        'missing': colander.null,
-        'default': colander.null,
-        'title': 'Logout Time',
-        'widget': None,
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    },
-    'gui_token': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'GUI Token',
-        'widget': None,
-        'validator': colander.Length(max=36),
-        'colModel': {
-            'width': 100,
-            'editable': False,
-        }
-    }
-}
-apply_mixin(PrincipalDd, DefaultMixinDd)
-
-
-class Principal(DbBase, DefaultMixin):
-    """Principals (users).
-
-    Principal must be unique. We store the string as-is, but treat it as
-    lowercase: 'FOO' == 'foo' --> True.
-    Since SQLAlchemy does not support PostgreSQL's functional indexes, we
-    create such an index manually when the principal table is created.
-
-    Emails are automatically lowercased. Emails must be unique.
+class User(DbBase, DefaultMixin):
     """
-    __tablename__ = "principal"
-    __table_args__ = (
-        {
-            'schema': 'pym'
-        }
-    )
+    A user account.
 
-    FIND_ONE_FIELD = 'principal'
+    Attribute ``principal`` is the login name which must be unique. We store the
+    string as-is, but treat it as lowercase: 'FOO' == 'foo' --> True.
+
+    We treat ``email`` and ``display_name`` the same.
+
+    Each user has a ``display_name`` by which she is identified in the UI.
+    Therefore this also must be unique. Be creative, if the default,
+    ``first_name`` and ``last_name`` is not sufficient.
+
+    Users are global to the system, i.e. a person has only one user account,
+    regardless how many tenants he belongs to.
+    """
+    __tablename__ = "user"
+    # The unique indexes are created below.
+    __table_args__ = (
+        {'schema': 'pym'}
+    )
 
     is_enabled = sa.Column(sa.Boolean, nullable=False, default=False)
     """Tells whether or not a (human) admin has en/disabled this account."""
     disable_reason = sa.Column(sa.Unicode(255))
-    """Reason why admin disabled this account"""
+    """Reason why admin disabled this account."""
     is_blocked = sa.Column(sa.Boolean, nullable=False, default=False)
     """Tells whether or not some automated process has en/disabled this
     account."""
     blocked_since = sa.Column(sa.DateTime)
-    """Timestamp when block was established"""
+    """Timestamp when block was established."""
     blocked_until = sa.Column(sa.DateTime)
-    """Timestamp when block will automatically be released. NULL=never"""
+    """Timestamp when block will automatically be released. NULL=never."""
     block_reason = sa.Column(sa.Unicode(255))
-    """Reason why block was established"""
+    """Reason why block was established."""
 
-    principal = sa.Column(sa.Unicode(255), nullable=False, unique=True)
-    """Principal or user name"""
+    principal = sa.Column(sa.Unicode(255), nullable=False)
+    """Principal or user name."""
     pwd = sa.Column(sa.Unicode(255))
-    """Password"""
+    """Password. NULL means blocked for login, e.g. for system accounts."""
     pwd_expires = sa.Column(sa.DateTime)
-    """Timestamp when current pwd expires. NULL==never"""
+    """Timestamp when current pwd expires. NULL==never."""
     identity_url = sa.Column(sa.Unicode(255), index=True, unique=True)
-    """Used for login by OpenID"""
-    email = sa.Column(sa.Unicode(128), nullable=False, unique=True)
-    """Email address. Always lowecased."""
+    """Used for login by OpenID."""
+    email = sa.Column(sa.Unicode(128), nullable=False)
+    """Email address. Always lower cased."""
     first_name = sa.Column(sa.Unicode(64))
-    """User's first name"""
+    """User's first name."""
     last_name = sa.Column(sa.Unicode(64))
-    """User's last name"""
-    display_name = sa.Column(sa.Unicode(255), nullable=False, unique=True)
+    """User's last name."""
+    display_name = sa.Column(sa.Unicode(255), nullable=False)
     """User is displayed like this. Usually 'first_name last_name' or
-    'principal'"""
+    'principal'."""
 
     login_time = sa.Column(sa.DateTime)
-    """Timestamp of current login"""
+    """Timestamp of current login."""
     login_ip = sa.Column(sa.String(255))
-    """IP address of logged in client"""
+    """IP address of logged in client."""
     access_time = sa.Column(sa.DateTime)
     """Timestamp when site was last accessed. Used to expire session."""
     kick_session = sa.Column(sa.Boolean, nullable=False, default=False)
     """Tells whether user's session is automatically terminated on next
-    access"""
+    access."""
     kick_reason = sa.Column(sa.Unicode(255))
-    """Display kicked user this message"""
+    """Display this message to kicked user."""
     logout_time = sa.Column(sa.DateTime)
-    """Timestamp of logout"""
-    gui_token = sa.Column(sa.String(36), index=True, unique=True)
-    """Hmmm...?"""
-    notes = sa.Column(sa.UnicodeText)
-    """Well, some notes."""
+    """Timestamp of logout."""
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
 
-    # XXX Too bad: we cannot simply do roles.append(new_role), because
-    #     when SA saves the modified principal, it just sets values for
-    #     principal_id and role_id, not owner which is required:
-    #     IntegrityError: (IntegrityError) null value in column "owner"
-    #         violates not-null constraint
-    #             'INSERT INTO pym.rolemember (principal_id, role_id) VALUES
-    #             (%(principal_id)s, %(role_id)s) RETURNING id'
-    #             {'principal_id': 2L, 'role_id': 101L}
-    roles = relationship('Role', secondary=RoleMember.__table__,
-        primaryjoin='Principal.id==RoleMember.principal_id',
-        backref="principals"
-    )
-    role_names = association_proxy('roles', 'name')
+    # groups = relationship('Group')
+    # """List of groups we are directly member of. Call :meth:`group_tree` to
+    # get all."""
 
-    def __str__(self):
-        return "<Principal(id={0}, principal='{1}', email='{2}'>".format(
-            self.id, self.principal, self.email)
+    def __repr__(self):
+        return "<{name}(id={id}, principal='{p}', email='{e}'>".format(
+            id=self.id, p=self.principal, e=self.email, name=self.__name__)
 
 
-RoleDd = {
-    # This must be the same as ``__tablename__`` in a SQLAlchemy declarative.
-    '__tablename__': 'role',
-    # This must be the same as ``__schema__`` in the table args of a
-    # SQLAlchemy declarative.
-    '__schema__': 'pym',
-
-    'name': {
-        'type': colander.String(),
-        'title': 'Rolename',
-        'widget': None,
-        'validator': colander.Length(min=1, max=255),
-        'colModel': {
-            'width': 150,
-            'editable': True,
-        }
-    },
-    'notes': {
-        'type': colander.String(),
-        'missing': colander.null,
-        'title': 'Notes',
-        'widget': None,
-        'validator': colander.Length(max=255),
-        'colModel': {
-            'width': 150,
-            'editable': True,
-            'edittype': 'text',
-        }
-    }
-}
-apply_mixin(RoleDd, DefaultMixinDd)
+sa.Index("user_principal_ux", sa.func.lower(User.__table__.c.principal),
+    unique=True)
+sa.Index("user_email_ux", sa.func.lower(User.__table__.c.email),
+    unique=True)
+sa.Index("user_display_name_ux", sa.func.lower(User.__table__.c.display_name),
+    unique=True)
 
 
-class Role(DbBase, DefaultMixin):
-    __tablename__ = "role"
+class Tenant(DbBase, DefaultMixin):
+    """
+    A tenant.
+    """
+    __tablename__ = "tenant"
     __table_args__ = (
-        {
-            'schema': 'pym'
-        }
+        sa.UniqueConstraint('name', name='tenant_ux'),
+        {'schema': 'pym'}
     )
-
-    FIND_ONE_FIELD = 'id'
 
     name = sa.Column(sa.Unicode(255), nullable=False)
-    notes = sa.Column(sa.Unicode(255))
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
 
-    def __str__(self):
-        return "<Role(id={0}, name='{1}'>".format(
-            self.id, self.name)
-
-
-def get_vw_principal_browse():
-    return sa.Table('vw_principal_browse', Principal.metadata, autoload=True,
-        schema='pym')
+    def __repr__(self):
+        return "<{name}(id={id}, name='{n}'>".format(
+            id=self.id, n=self.name, name=self.__name__)
 
 
-def get_vw_role_browse():
-    return sa.Table('vw_role_browse', Role.metadata, autoload=True,
-        schema='pym')
+class Group(DbBase, DefaultMixin):
+    """
+    A group.
+
+    A group groups users or other groups. Groups may be global to the system,
+    or belong to a specific tenant. In the former case, group's ``name`` must
+    be globally unique, in the latter case only within that tenant.
+
+    A group may only belong to one tenant.
+    """
+    __tablename__ = "group"
+    __table_args__ = (
+        sa.UniqueConstraint('tenant_id', 'name', name='group_ux'),
+        {'schema': 'pym'}
+    )
+
+    tenant_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.tenant.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=True
+    )
+    """Optional reference to the tenant to which this group belongs."""
+    name = sa.Column(sa.Unicode(255), nullable=False)
+    """Name of the group. Must be unique within a tenant."""
+    kind = sa.Column(sa.Unicode(255), nullable=True)
+    """An optional classifier to bundle groups together."""
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
+
+    def __repr__(self):
+        return "<{name}(id={id}, tenant_id={t}, name='{n}'>".format(
+            id=self.id, t=self.tenant_id, n=self.name, name=self.__name__)
 
 
-def get_vw_rolemember_browse():
-    return sa.Table('vw_rolemember_browse', RoleMember.metadata, autoload=True,
-        schema='pym')
+class GroupMember(DbBase, DefaultMixin):
+    """
+    Group member.
+
+    A group member is either a user or another group.
+    """
+    __tablename__ = "group_member"
+    __table_args__ = (
+        sa.UniqueConstraint('group_id', 'user_id', 'other_group_id',
+            name='group_member_ux'),
+        {'schema': 'pym'}
+    )
+
+    group_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.group.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=False)
+    """We define a member of this group."""
+    user_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.user.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=True)
+    """Member is this user."""
+    other_group_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.group.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=True)
+    """Member is this group."""
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
+
+
+class Permission(DbBase, DefaultMixin):
+    """
+    Permission.
+
+    A permission has a ``code_name``, a string that is used in code e.g. as::
+
+        @view_defaults(permission='manage_auth')
+
+    Permissions may be hierarchical.
+
+    If you grant a permission, automatically all of its parents are also
+    granted. E.g. if ``read`` is a parent of ``write`` and you grant ``write``,
+    ``read`` is also granted.
+
+    If you deny a permission, automatically all of its children are also denied.
+    E.g. if with above settings you deny ``read``, ``write`` is also denied.
+    """
+    __tablename__ = "permission_tree"
+    __table_args__ = (
+        sa.UniqueConstraint('code_name', name='permission_tree_ux'),
+        {'schema': 'pym'}
+    )
+    # Topmost permission has parent_id NULL
+    parent_id = sa.Column(sa.Integer(),
+        sa.ForeignKey(
+            'pym.permission_tree.id',
+            onupdate='CASCADE',
+            ondelete='CASCADE',
+            name='permission_parent_fk'
+        ),
+        nullable=True
+    )
+    code_name = sa.Column(sa.Unicode(64), nullable=False)
+    """The name of the permission as used in code."""
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
+
+    def __repr__(self):
+        return "<{name}(id={id}, code_name='{cn}', parent_id='{p}'>".format(
+            id=self.id, cn=self.code_name, p=self.parent_id, name=self.__name__)
+
+
+class Ace(DbBase, DefaultMixin):
+    """
+    Access Control Entry.
+
+    We define access control by granting or denying a group or a user a
+    named permission on a resource.
+    """
+    __tablename__ = "resource_acl"
+    __table_args__ = (
+        sa.UniqueConstraint('resource_id', 'group_id', 'user_id',
+            'permission_id', 'allow', name='resource_acl_ux'),
+        {'schema': 'pym'}
+    )
+
+    resource_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.resource_tree.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+            name='resource_acl_resource_fk'
+        ),
+        nullable=False
+    )
+    """Reference to a resource node."""
+    group_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.group.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+            name='resource_acl_group_fk'
+        ),
+        nullable=True
+    )
+    """Reference to a group. Mandatory if user is not set."""
+    user_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.user.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+            name='resource_acl_user_fk'
+        ),
+        nullable=True
+    )
+    """Reference to a user. Mandatory if group is not set."""
+    permission_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.permission_tree.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+            name='resource_acl_permission_fk'
+        ),
+        nullable=False
+    )
+    """Reference to a permission."""
+    allow = sa.Column(sa.Boolean(),
+        nullable=False
+    )
+    """Allow if TRUE, deny if FALSE."""
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
+
+    def __repr__(self):
+        return "<{name}(id={id}, resource_node_id='{r}', permission_id='{p}', " \
+               "group_id={g}, user_id={u}, allow={allow}>".format(
+                   id=self.id, r=self.resource_node_id, p=self.permission_id,
+                   g=self.group_id, u=self.user_id, allow=self.allow,
+                   name=self.__name__
+               )
 
 
 class ActivityLog(DbBase):
     __tablename__ = "activity_log"
     __table_args__ = (
-        {
-            'schema': 'pym'
-        }
+        {'schema': 'pym'}
     )
-
-    FIND_ONE_FIELD = id
 
     id = sa.Column(sa.Integer, primary_key=True)
     """Primary key of table."""
@@ -546,3 +374,18 @@ class ActivityLog(DbBase):
     remote_user = sa.Column(sa.Unicode(255))
     header_authorization = sa.Column(sa.Unicode(255))
     headers = sa.Column(HSTORE)
+
+
+def get_vw_user_browse():
+    return sa.Table('vw_user_browse', User.metadata, autoload=True,
+        schema='pym')
+
+
+def get_vw_group_browse():
+    return sa.Table('vw_group_browse', Group.metadata, autoload=True,
+        schema='pym')
+
+
+def get_vw_group_member_browse():
+    return sa.Table('vw_group_member_browse', GroupMember.metadata, autoload=True,
+        schema='pym')

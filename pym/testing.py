@@ -63,13 +63,13 @@ def create_unit_tester(lgg, sess):
         'display_name': 'UNIT TESTER'
     }
     try:
-        p = sess.query(pam.Principal).filter(
-            pam.Principal.id == UNIT_TESTER_UID
+        p = sess.query(pam.User).filter(
+            pam.User.id == UNIT_TESTER_UID
         ).one()
         lgg.debug('Principal ' + p.principal + ' loaded')
     except sa.orm.exc.NoResultFound:
         # noinspection PyArgumentList
-        p = pam.Principal(owner=SYSTEM_UID, **pf)
+        p = pam.User(owner=SYSTEM_UID, **pf)
         sess.add(p)
         lgg.debug('Principal ' + p.principal + ' added')
     sess.flush()

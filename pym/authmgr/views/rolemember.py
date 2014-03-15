@@ -9,7 +9,7 @@ from sqlalchemy.exc import StatementError
 from sqlalchemy.orm.exc import NoResultFound
 
 import pym.authmgr
-from pym.authmgr.models import (RoleMemberDd, RoleMember, PrincipalDd,
+from pym.authmgr.models import (GroupMemberDd, GroupMember, PrincipalDd,
     RoleDd)
 import pym.authmgr.manager as manager
 from pym.models import DbSession, todata
@@ -17,7 +17,7 @@ from pym.tk.grid import Grid
 
 
 @view_defaults(
-    context=pym.authmgr.models.NodeRoleMember,
+    context=pym.authmgr.models.NodeGroupMember,
     permission='manage_auth'
 )
 class RoleMemberView(object):
@@ -50,7 +50,7 @@ class RoleMemberView(object):
         self.context = context
         self.request = request
 
-        self.ENTITY = RoleMember
+        self.ENTITY = GroupMember
         self.GRID_ID = 'grid-rolemembers'
 
         self.GRID_OPTS = {
@@ -64,7 +64,7 @@ class RoleMemberView(object):
 
         self.COLOPTS = None
 
-        self.DD = copy.deepcopy(RoleMemberDd)
+        self.DD = copy.deepcopy(GroupMemberDd)
         for f in ['id', 'principal', 'is_enabled', 'is_blocked', 'email',
                 'first_name', 'last_name', 'display_name', 'notes']:
             self.DD['principal_' + f] = copy.deepcopy(PrincipalDd[f])

@@ -7,7 +7,7 @@ from sqlalchemy.exc import StatementError
 from sqlalchemy.orm.exc import NoResultFound
 
 import pym.authmgr
-from pym.authmgr.models import PrincipalDd, Principal, Role, RoleMember
+from pym.authmgr.models import PrincipalDd, User, Group, GroupMember
 import pym.authmgr.manager as manager
 from pym.models import DbSession, todata
 from pym.tk.grid import Grid
@@ -15,7 +15,7 @@ import pym.lib
 
 
 @view_defaults(
-    context=pym.authmgr.models.NodePrincipal,
+    context=pym.authmgr.models.NodeUser,
     permission='manage_auth'
 )
 class PrincipalView(object):
@@ -48,7 +48,7 @@ class PrincipalView(object):
         self.context = context
         self.request = request
 
-        self.ENTITY = Principal
+        self.ENTITY = User
         self.GRID_ID = 'grid-principals'
 
         self.GRIDOPTS = {
@@ -139,7 +139,7 @@ class PrincipalView(object):
                           opts=self.COLOPTS)
 
         sess = DbSession
-        rs = sess.query(Role.id, Role.name)
+        rs = sess.query(Group.id, Group.name)
         roles = []
         for r in rs:
             name = r[1]
@@ -171,9 +171,9 @@ class PrincipalView(object):
             for rid in role_ids:
                 for pid in principal_ids:
                     # XXX This is not atomic!
-                    if not sess.query(RoleMember.id).filter(
-                            sa.and_(RoleMember.principal_id == pid,
-                                RoleMember.role_id == rid)).all():
+                    if not sess.query(GroupMember.id).filter(
+                            sa.and_(GroupMember.principal_id == pid,
+                                GroupMember.role_id == rid)).all():
                         manager.create_rolemember(dict(
                             owner=self.request.user.uid,
                             principal_id=pid,

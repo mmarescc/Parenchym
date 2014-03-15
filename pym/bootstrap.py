@@ -113,12 +113,12 @@ class AppBaseClass(object):
             'display_name': 'UNIT TESTER'
         }
         try:
-            p = sess.query(aam.Principal).filter(
-                aam.Principal.id == UNIT_TESTER_UID
+            p = sess.query(aam.User).filter(
+                aam.User.id == UNIT_TESTER_UID
             ).one()
             L.debug('Principal ' + p.principal + ' loaded')
         except sa.orm.exc.NoResultFound:
-            p = aam.Principal(owner=SYSTEM_UID, **pf)
+            p = aam.User(owner=SYSTEM_UID, **pf)
             sess.add(p)
             L.debug('Principal ' + p.principal + ' added')
         sess.flush()

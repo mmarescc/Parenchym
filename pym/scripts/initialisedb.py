@@ -21,85 +21,102 @@ import pym.lib
 import pym.models
 
 
-SQL_VW_PRINCIPAL_BROWSE = """
-CREATE OR REPLACE VIEW pym.vw_principal_browse AS
+SQL_VW_USER_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_user_browse AS
 (
-    SELECT principal.id                      AS id,
-           principal.is_enabled              AS is_enabled,
-           principal.disable_reason          AS disable_reason,
-           principal.is_blocked              AS is_blocked,
-           principal.blocked_since           AS blocked_since,
-           principal.blocked_until           AS blocked_until,
-           principal.block_reason            AS block_reason,
-           principal.principal               AS principal,
-           principal.pwd                     AS pwd,
-           principal.pwd_expires             AS pwd_expires,
-           principal.identity_url            AS identity_url,
-           principal.email                   AS email,
-           principal.first_name              AS first_name,
-           principal.last_name               AS last_name,
-           principal.display_name            AS display_name,
-           principal.login_time              AS login_time,
-           principal.login_ip                AS login_ip,
-           principal.access_time             AS access_time,
-           principal.kick_session            AS kick_session,
-           principal.kick_reason             AS kick_reason,
-           principal.logout_time             AS logout_time,
-           principal.gui_token               AS gui_token,
-           principal.notes                   AS notes,
-           principal.mtime                   AS mtime,
-           principal.editor                  AS editor,
-           e.display_name                    AS editor_display_name,
-           principal.ctime                   AS ctime,
-           principal.owner                   AS owner,
-           o.display_name                    AS owner_display_name
-    FROM pym.principal
-    LEFT OUTER JOIN pym.principal AS o ON pym.principal.owner = o.id
-    LEFT OUTER JOIN pym.principal AS e ON pym.principal.editor = e.id
-);"""
-
-SQL_VW_ROLE_BROWSE = """
-CREATE OR REPLACE VIEW pym.vw_role_browse AS
-(
-    SELECT role.id                      AS id,
-           role.name                    AS name,
-           role.notes                   AS notes,
-           role.mtime                   AS mtime,
-           role.editor                  AS editor,
+    SELECT "user".id                      AS id,
+           "user".is_enabled              AS is_enabled,
+           "user".disable_reason          AS disable_reason,
+           "user".is_blocked              AS is_blocked,
+           "user".blocked_since           AS blocked_since,
+           "user".blocked_until           AS blocked_until,
+           "user".block_reason            AS block_reason,
+           "user".principal               AS principal,
+           "user".pwd                     AS pwd,
+           "user".pwd_expires             AS pwd_expires,
+           "user".identity_url            AS identity_url,
+           "user".email                   AS email,
+           "user".first_name              AS first_name,
+           "user".last_name               AS last_name,
+           "user".display_name            AS display_name,
+           "user".login_time              AS login_time,
+           "user".login_ip                AS login_ip,
+           "user".access_time             AS access_time,
+           "user".kick_session            AS kick_session,
+           "user".kick_reason             AS kick_reason,
+           "user".logout_time             AS logout_time,
+           "user".descr                   AS descr,
+           "user".mtime                   AS mtime,
+           "user".editor_id                  AS editor_id,
            e.display_name               AS editor_display_name,
-           role.ctime                   AS ctime,
-           role.owner                   AS owner,
+           "user".ctime                   AS ctime,
+           "user".owner_id                   AS owner_id,
            o.display_name               AS owner_display_name
-    FROM pym.role
-    LEFT OUTER JOIN pym.principal AS o ON pym.role.owner = o.id
-    LEFT OUTER JOIN pym.principal AS e ON pym.role.editor = e.id
+    FROM      pym."user"
+    JOIN      pym."user" AS o ON pym."user".owner_id = o.id
+    LEFT JOIN pym."user" AS e ON pym."user".editor_id = e.id
 );"""
 
-SQL_VW_ROLEMEMBER_BROWSE = """
-CREATE OR REPLACE VIEW pym.vw_rolemember_browse AS
+SQL_VW_TENANT_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_tenant_browse AS
 (
-    SELECT rm.id                             AS id,
-           principal.id                      AS principal_id,
-           principal.principal               AS principal_principal,
-           principal.is_enabled              AS principal_is_enabled,
-           principal.is_blocked              AS principal_is_blocked,
-           principal.email                   AS principal_email,
-           principal.first_name              AS principal_first_name,
-           principal.last_name               AS principal_last_name,
-           principal.display_name            AS principal_display_name,
-           principal.notes                   AS principal_notes,
-           role.id                           AS role_id,
-           role.name                         AS role_name,
-           role.notes                        AS role_notes,
-           rm.ctime                          AS ctime,
-           rm.owner                          AS owner,
-           o.display_name                    AS owner_display_name
-    FROM pym.rolemember rm
-    -- Use outer joins to principal and role to see if we have
-    -- member records for non-existing principals or roles.
-    LEFT OUTER JOIN pym.principal      ON rm.principal_id = principal.id
-    LEFT OUTER JOIN pym.role           ON rm.role_id      = role.id
-    LEFT OUTER JOIN pym.principal AS o ON pym.principal.owner = o.id
+    SELECT tenant.id                     AS id,
+           tenant.name                   AS name,
+           tenant.descr                  AS descr,
+           tenant.mtime                  AS mtime,
+           tenant.editor_id              AS editor_id,
+           e.display_name                AS editor_display_name,
+           tenant.ctime                  AS ctime,
+           tenant.owner_id                  AS owner_id,
+           o.display_name                AS owner_display_name
+    FROM      pym.tenant
+    JOIN      pym."user" AS o ON pym.tenant.owner_id = o.id
+    LEFT JOIN pym."user" AS e ON pym.tenant.editor_id = e.id
+);"""
+
+SQL_VW_GROUP_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_group_browse AS
+(
+    SELECT "group".id                      AS id,
+           "group".tenant_id               AS tenant_id,
+           t.name                        AS tenant_name,
+           "group".name                    AS name,
+           "group".descr                   AS descr,
+           "group".mtime                   AS mtime,
+           "group".editor_id                  AS editor_id,
+           e.display_name                AS editor_display_name,
+           "group".ctime                   AS ctime,
+           "group".owner_id                   AS owner_id,
+           o.display_name                AS owner_display_name
+    FROM      pym."group"
+    JOIN      pym."user" AS o ON pym."group".owner_id = o.id
+    LEFT JOIN pym."user" AS e ON pym."group".editor_id = e.id
+    LEFT JOIN pym.tenant AS t ON pym."group".tenant_id = t.id
+);"""
+
+SQL_VW_GROUP_MEMBER_BROWSE = """
+CREATE OR REPLACE VIEW pym.vw_group_member_browse AS
+(
+    SELECT gm.id                        AS id,
+           "group".id                     AS group_id,
+           tenant.id                    AS tenant_id,
+           tenant.name                  AS tenant_name,
+           "group".name                   AS group_name,
+           "user".id                      AS user_id,
+           "user".principal               AS user_principal,
+           "user".email                   AS user_email,
+           "user".display_name            AS user_display_name,
+           gro.id                       AS other_group_id,
+           gro.name                     AS other_group_name,
+           gm.ctime                     AS ctime,
+           gm.owner_id                     AS owner_id,
+           o.display_name               AS owner_display_name
+    FROM      pym.group_member gm
+    JOIN      pym."user"  AS o      ON gm.owner_id    = o.id
+    JOIN      pym."group"           ON gm.group_id       = "group".id
+    LEFT JOIN pym."user"            ON gm.user_id        = "user".id
+    LEFT JOIN pym."group" AS gro    ON gm.other_group_id = gro.id
+    LEFT JOIN pym.tenant            ON "group".tenant_id      = tenant.id
 );"""
 
 
@@ -109,7 +126,7 @@ class InitialiseDbCli(pym.cli.Cli):
 
     def run(self):
 
-        sess = pym.models.DbSession()
+        sess = self._sess
         with transaction.manager:
             pym.models.create_all()
             self._create_views(sess)
@@ -122,80 +139,81 @@ class InitialiseDbCli(pym.cli.Cli):
 
     @staticmethod
     def _create_views(sess):
-        sess.execute(SQL_VW_PRINCIPAL_BROWSE)
-        sess.execute(SQL_VW_ROLE_BROWSE)
-        sess.execute(SQL_VW_ROLEMEMBER_BROWSE)
+        sess.execute(SQL_VW_USER_BROWSE)
+        sess.execute(SQL_VW_TENANT_BROWSE)
+        sess.execute(SQL_VW_GROUP_BROWSE)
+        sess.execute(SQL_VW_GROUP_MEMBER_BROWSE)
 
     def _setup_users(self, sess):
-        # 1// Create principal system
-        p_system = usrmgr.create_principal(dict(
+        # 1// Create user system
+        p_system = usrmgr.create_user(dict(
             id=SYSTEM_UID,
             principal='system',
             email='system@localhost',
             first_name='system',
             display_name='System',
-            owner=SYSTEM_UID,
-            # Roles do not exist yet. Do not auto-create them
-            roles=False
+            owner_id=SYSTEM_UID,
+            # Groups do not exist yet. Do not auto-create them
+            groups=False
         ))
 
-        # 2// Create roles
-        # This role should not have members.
+        # 2// Create groups
+        # This group should not have members.
         # Not-authenticated users are automatically member of 'everyone'
-        usrmgr.create_role(dict(
+        usrmgr.create_group(dict(
             id=EVERYONE_RID,
             name='everyone',
-            notes='Everyone (incl. unauthenticated users)',
+            descr='Everyone (incl. unauthenticated users)',
             location_name='System',
             location_type='System',
-            owner=SYSTEM_UID,
+            owner_id=SYSTEM_UID,
         ))
-        usrmgr.create_role(dict(
+        usrmgr.create_group(dict(
             id=SYSTEM_RID,
             name='system',
             location_name='System',
             location_type='System',
-            owner=SYSTEM_UID
+            owner_id=SYSTEM_UID
         ))
-        r_wheel = usrmgr.create_role(dict(
+        r_wheel = usrmgr.create_group(dict(
             id=WHEEL_RID,
             name='wheel',
-            notes='Site Admins',
+            descr='Site Admins',
             location_name='System',
             location_type='System',
-            owner=SYSTEM_UID
+            owner_id=SYSTEM_UID
         ))
-        r_users = usrmgr.create_role(dict(
+        r_users = usrmgr.create_group(dict(
             id=USERS_RID,
             name='users',
-            notes='Authenticated Users',
+            descr='Authenticated Users',
             location_name='System',
             location_type='System',
-            owner=SYSTEM_UID
+            owner_id=SYSTEM_UID
         ))
-        r_unit_testers = usrmgr.create_role(dict(
+        r_unit_testers = usrmgr.create_group(dict(
             id=UNIT_TESTERS_RID,
             name='unit testers',
-            notes='Unit Testers',
+            descr='Unit Testers',
             location_name='System',
             location_type='System',
-            owner=SYSTEM_UID
+            owner_id=SYSTEM_UID
         ))
 
-        # 3// Put 'system' into its roles
-        usrmgr.create_rolemember(dict(
-            role_id=r_users.id,
-            principal_id=p_system.id,
-            owner=SYSTEM_UID
+        # 3// Put 'system' into its groups
+        usrmgr.create_group_member(dict(
+            group_id=r_users.id,
+            user_id=p_system.id,
+            owner_id=SYSTEM_UID
         ))
-        usrmgr.create_rolemember(dict(
-            role_id=r_wheel.id,
-            principal_id=p_system.id,
-            owner=SYSTEM_UID
+        usrmgr.create_group_member(dict(
+            group_id=r_wheel.id,
+            user_id=p_system.id,
+            owner_id=SYSTEM_UID
         ))
 
-        # 4// Create principals
-        usrmgr.create_principal(dict(
+        # 4// Create users
+        usrmgr.create_user(dict(
             id=ROOT_UID,
             principal='root',
             email='root@localhost',
@@ -204,10 +222,10 @@ class InitialiseDbCli(pym.cli.Cli):
             pwd=self.rc.g('auth.user_root.pwd'),
             is_enabled=True,
             user_type='System',
-            owner=SYSTEM_UID,
-            roles=[r_wheel.name, r_users.name]
+            owner_id=SYSTEM_UID,
+            groups=[r_wheel.name, r_users.name]
         ))
-        usrmgr.create_principal(dict(
+        usrmgr.create_user(dict(
             id=NOBODY_UID,
             principal='nobody',
             email='nobody@localhost',
@@ -215,12 +233,12 @@ class InitialiseDbCli(pym.cli.Cli):
             display_name='Nobody',
             is_enabled=False,
             user_type='System',
-            owner=SYSTEM_UID,
-            # This principal is not member of any role
+            owner_id=SYSTEM_UID,
+            # This user is not member of any group
             # Not-authenticated users are automatically 'nobody'
-            roles=False
+            groups=False
         ))
-        usrmgr.create_principal(dict(
+        usrmgr.create_user(dict(
             id=SAMPLE_DATA_UID,
             principal='sample_data',
             email='sample_data@localhost',
@@ -228,11 +246,11 @@ class InitialiseDbCli(pym.cli.Cli):
             display_name='Sample Data',
             is_enabled=False,
             user_type='System',
-            owner=SYSTEM_UID,
-            # This principal is not member of any role
-            roles=False
+            owner_id=SYSTEM_UID,
+            # This user is not member of any group
+            groups=False
         ))
-        usrmgr.create_principal(dict(
+        usrmgr.create_user(dict(
             id=UNIT_TESTER_UID,
             principal='unit_tester',
             email='unit_tester@localhost',
@@ -240,16 +258,16 @@ class InitialiseDbCli(pym.cli.Cli):
             display_name='Unit-Tester',
             is_enabled=False,
             user_type='System',
-            owner=SYSTEM_UID,
-            roles=[r_unit_testers.name]
+            owner_id=SYSTEM_UID,
+            groups=[r_unit_testers.name]
         ))
 
         # 5// Set sequence counter for user-created things
         # XXX PostgreSQL only
         # Regular users have ID > 100
-        sess.execute('ALTER SEQUENCE pym.principal_id_seq RESTART WITH 101')
-        # Regular roles have ID > 100
-        sess.execute('ALTER SEQUENCE pym.role_id_seq RESTART WITH 101')
+        sess.execute('ALTER SEQUENCE pym.user_id_seq RESTART WITH 101')
+        # Regular groups have ID > 100
+        sess.execute('ALTER SEQUENCE pym.group_id_seq RESTART WITH 101')
         sess.flush()
 
 

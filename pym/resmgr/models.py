@@ -1,9 +1,8 @@
 import pyramid.util
 import sqlalchemy as sa
 import sqlalchemy.event
-from sqlalchemy.orm import (relationship, backref, validates)
+from sqlalchemy.orm import (relationship, backref)
 from sqlalchemy.orm.collections import attribute_mapped_collection
-from sqlalchemy.dialects.postgresql import JSON
 
 from pyramid.security import (
     Allow, ALL_PERMISSIONS
@@ -69,13 +68,11 @@ def root_factory(request):
 # =========================
 
 
-class DbResNode(DbBase, DefaultMixin):
-    __tablename__ = "restree"
+class ResourceNode(DbBase, DefaultMixin):
+    __tablename__ = "resource_tree"
     sa.UniqueConstraint('parent_id', 'name'),
     __table_args__ = (
-        {
-            'schema': 'pym'
-        }
+        {'schema': 'pym'}
     )
     # __mapper_args__ = {
     #     'polymorphic_on': 'kind',
@@ -83,8 +80,14 @@ class DbResNode(DbBase, DefaultMixin):
     # }
 
     # Root resource has parent_id NULL
-    parent_id = sa.Column(sa.Integer(),
-        sa.ForeignKey('pym.restree.id', onupdate='CASCADE', ondelete='CASCADE'),
+    parent_id = sa.Column(
+        sa.Integer(),
+        sa.ForeignKey(
+            'pym.resource_tree.id',
+            onupdate='CASCADE',
+            ondelete='CASCADE',
+            name='resource_tree_parent_id_fk'
+        ),
         nullable=True
     )
     name = sa.Column(sa.Unicode(255), nullable=False)
@@ -126,8 +129,8 @@ class DbResNode(DbBase, DefaultMixin):
     E.g. 'pym.resmgr:IRes'
     """
 
-    children = relationship("DbResNode",
-        order_by=lambda: [DbResNode.sortix, DbResNode.name],
+    children = relationship("ResourceNode",
+        order_by=lambda: [ResourceNode.sortix, ResourceNode.name],
         # cascade deletions
         cascade="all, delete-orphan",
         # Let the DB cascade deletions to children
@@ -142,7 +145,7 @@ class DbResNode(DbBase, DefaultMixin):
         # many to one + adjacency list - remote_side
         # is required to reference the 'remote'
         # column in the join condition.
-        backref=backref("parent", remote_side="DbResNode.id"),
+        backref=backref("parent", remote_side="ResourceNode.id"),
 
         # children will be represented as a dictionary
         # on the "name" attribute.
@@ -263,9 +266,9 @@ class DbResNode(DbBase, DefaultMixin):
 
 
 # noinspection PyUnusedLocal
-def dbresnode_load_listener(target, context):
+def resource_node_load_listener(target, context):
     if target.iface:
         iface = pyramid.util.DottedNameResolver(None).resolve(target.iface)
         zope.interface.alsoProvides(target, iface)
 
-sa.event.listen(DbResNode, 'load', dbresnode_load_listener)
+sa.event.listen(ResourceNode, 'load', resource_node_load_listener)

@@ -325,7 +325,7 @@ class Cli(object):
         The session is created from the web app's default settings and therefore
         is in most cases a scoped session with transaction extension. If you need
         a different session, caller may create one itself and set this property
-        accordingly.
+
         """
         return self._sess
 

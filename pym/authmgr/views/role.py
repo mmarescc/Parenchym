@@ -9,14 +9,14 @@ from sqlalchemy.exc import StatementError
 from sqlalchemy.orm.exc import NoResultFound
 
 import pym.authmgr
-from pym.authmgr.models import RoleDd, Role
+from pym.authmgr.models import RoleDd, Group
 import pym.authmgr.manager as manager
 from pym.models import DbSession, todata
 from pym.tk.grid import Grid
 
 
 @view_defaults(
-    context=pym.authmgr.models.NodeRole,
+    context=pym.authmgr.models.NodeGroup,
     permission='manage_auth'
 )
 class RoleView(object):
@@ -48,7 +48,7 @@ class RoleView(object):
         self.context = context
         self.request = request
 
-        self.ENTITY = Role
+        self.ENTITY = Group
         self.GRID_ID = 'grid-roles'
 
         self.GRIDOPTS = {
