@@ -20,8 +20,8 @@ from pym.models import (
 
 class Root(pym.lib.BaseNode):
     __acl__ = [
-        (Allow, 'r:wheel', ALL_PERMISSIONS),
-        (Allow, 'r:users', 'view'),
+        (Allow, 'g:wheel', ALL_PERMISSIONS),
+        (Allow, 'g:users', 'view'),
     ]
 
     def __init__(self, parent):

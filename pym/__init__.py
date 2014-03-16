@@ -1,7 +1,6 @@
 import os.path
-from pkg_resources import resource_filename
-import json
 
+from pkg_resources import resource_filename
 from pyramid.config import Configurator
 from pyramid_beaker import session_factory_from_settings
 from pyramid.authentication import SessionAuthenticationPolicy
@@ -16,10 +15,10 @@ from pym.authmgr import manager as authmgr_manager
 from . import security
 from . import models
 from . import i18n
-from . import lib
 from .resmgr.models import root_factory
 
 
+# noinspection PyUnusedLocal
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
@@ -99,6 +98,11 @@ def includeme(config):
 
     # Mailer
     config.registry['mailer'] = Mailer.from_settings(config.registry.settings)
+
+    # Mako
+    config.include('pyramid_mako')
+    # Chameleon needed if we use deform
+    #config.include('pyramid_chameleon')
 
     # Init DB
     models.init(config.registry.settings, 'db.pym.sa.')

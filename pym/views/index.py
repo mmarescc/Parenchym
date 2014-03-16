@@ -1,20 +1,19 @@
+import logging
 from pyramid.security import (
-    NO_PERMISSION_REQUIRED,
-    has_permission
+    NO_PERMISSION_REQUIRED
 )
 from pyramid.httpexceptions import HTTPFound
-
 from pyramid.view import view_config
-import logging
+import sqlalchemy as sa
+import sqlalchemy.orm.exc
+
 import pym.models
 
 import pym.resmgr.models
+import pym.authmgr.models
 
 
-L = logging.getLogger('Pym')
-_ = lambda s: s
-
-
+# noinspection PyUnusedLocal
 @view_config(
     name='',
     context=pym.resmgr.models.Root,
@@ -27,6 +26,7 @@ def index(context, request):
     return dict()
 
 
+# noinspection PyUnusedLocal
 @view_config(
     name='imprint',
     context=pym.resmgr.models.Root,
@@ -37,18 +37,7 @@ def imprint(context, request):
     return dict()
 
 
-@view_config(
-    name='js',
-    context=pym.resmgr.models.Root,
-    renderer='string',
-    permission=NO_PERMISSION_REQUIRED
-)
-def js(context, request):
-    # Just sit here and do nothing.
-    # If we get called, it will be logged in subscribers on new request.
-    return ''
-
-
+# noinspection PyUnusedLocal
 @view_config(
     name='main',
     context=pym.resmgr.models.Root,
@@ -56,4 +45,24 @@ def js(context, request):
     permission='view'
 )
 def main(context, request):
+    # lgg = logging.getLogger('pym.test')
+    # sess = pym.models.DbSession()
+    # T = pym.authmgr.models.Tenant
+    # try:
+    #     tn = sess.query(T).filter(T.name == 'foo').one()
+    #     request.session['cnt'] = tn.descr.count('o')
+    # except sa.orm.exc.NoResultFound:
+    #     tn = pym.authmgr.models.Tenant()
+    #     tn.owner_id = request.user.uid
+    #     tn.name = 'foo'
+    #     tn.descr = 'o'
+    #     sess.add(tn)
+    #     lgg.debug('Added')
+    #     request.session['cnt'] = 0
+    # else:
+    #     request.session['cnt'] += 1
+    #     lgg.debug('{} {} {} {}'.format(request.session['cnt'], tn.editor_id,
+    #         tn.descr, tn.descr.count('o')))
+    #     tn.descr += 'o'
+    #     tn.editor_id = request.user.uid
     return dict()

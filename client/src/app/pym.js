@@ -6,7 +6,6 @@
             $ = require('jquery');
             require('ui/pnotify/jquery.pnotify');
             require('vendor/jstorage.min');
-            require('vendor/jsrender.min');
             // Also create a global in case some scripts
             // that are loaded still are looking for
             // a global even when an AMD loader is in use.
@@ -29,12 +28,12 @@
      */
     var my = {};
 
-    my.gui_token = '';
+    my.csrf_token = '';
     my.base_url = '';
 
     my.init = function (rc) {
         this.rc = rc;
-        this.gui_token = rc['gui_token'];
+        this.csrf_token = rc['csrf_token'];
         this.base_url = rc['base_url'];
         my.init_growl();
         my.init_pym(rc);
@@ -66,7 +65,7 @@
         var that = this;
         $.ajaxSetup({
             headers: {
-                'X-Pym-GUI-Token': that.gui_token
+                'X-CSRF-Token': that.csrf_token
             }
         });
         $('body').ajaxError(function (evt, jqXHR, ajaxSettings, thrownError) {

@@ -34,10 +34,10 @@ pycrypto
 pyinotify
 pyparsing
 pyramid
-pyramid-beaker
+pyramid_beaker
 pyramid-debugtoolbar
 pyramid-jinja2
-pyramid-mailer
+pyramid_mailer
 pyramid-mako
 pyramid-tm
 python-dateutil

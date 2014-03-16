@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-
 # Interesting reads:
 # http://stackoverflow.com/questions/270879/efficiently-updating-database-using-sqlalchemy-orm/278606#278606
 # http://stackoverflow.com/questions/9593610/creating-a-temporary-table-from-a-query-using-sqlalchemy-orm
 # http://stackoverflow.com/questions/9766940/how-to-create-an-sql-view-with-sqlalchemy
 # Materialized view:
 # http://stackoverflow.com/questions/11114903/oracle-functional-index-creation
-import json
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -16,9 +13,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     event,
-    TypeDecorator,
-    Unicode,
-    UnicodeText,
     util
 )
 from sqlalchemy.orm import (
@@ -33,46 +27,32 @@ from sqlalchemy.ext.declarative import (
     declared_attr,
     declarative_base
 )
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import (func, Executable, ClauseElement)
+from sqlalchemy.sql.expression import (func)
 import sqlalchemy.engine
 
 from zope.sqlalchemy import ZopeTransactionExtension
 
-import pyramid.threadlocal
 import colander
 import deform
 import deform.widget
 import pym.exc
+import pym.lib
 
 
 # ===[ SCHEMA HELPERS ]=======
 
 # noinspection PyUnusedLocal
 @colander.deferred
-def deferred_csrf_default(node, kw):
+def deferred_csrf_token_default(node, kw):
     request = kw.get('request')
     csrf_token = request.session.get_csrf_token()
     return csrf_token
 
 
-# noinspection PyUnusedLocal
-@colander.deferred
-def deferred_csrf_validator(node, kw):
-    # noinspection PyUnusedLocal
-    def validate_csrf(node, value):
-        request = kw.get('request')
-        csrf_token = request.session.get_csrf_token()
-        if value != csrf_token:
-            raise ValueError('Bad CSRF token')
-    return validate_csrf
-
-
 CSRF_SCHEMA_NODE = colander.SchemaNode(
     colander.String(),
-    default=deferred_csrf_default,
-    # Don't need this. We have a subscriber checking this token
-    #validator = deferred_csrf_validator,
+    default=deferred_csrf_token_default,
+    # Don't need a validator. We have a subscriber checking this token.
     widget=deform.widget.HiddenWidget(),
 )
 """
@@ -85,7 +65,7 @@ Usage::
         pwd   = colander.SchemaNode(colander.String(),
                     widget=deform.widget.PasswordWidget()
                 )
-        csrf = CSRF_SCHEMA_NODE
+        csrf_token = CSRF_SCHEMA_NODE
 
 When you create a schema instance, do not forget to bind the current
 request like so::
@@ -102,7 +82,7 @@ class LoginSchema(colander.MappingSchema):
     pwd = colander.SchemaNode(colander.String(),
         widget=deform.widget.PasswordWidget()
     )
-    csrf = CSRF_SCHEMA_NODE
+    csrf_token = CSRF_SCHEMA_NODE
 
 
 # ===[ DB HELPERS ]=======
@@ -122,8 +102,9 @@ Default DB engine.
 
 
 def _validate_editor(context):
-    if not context.current_parameters['editor']:
-        raise ValueError('Editor must be set on update.')
+    pass
+    # if not context.current_parameters['editor_id']:
+    #     raise ValueError('Editor must be set on update.')
 
 
 class DefaultMixin(object):
@@ -168,7 +149,8 @@ class DefaultMixin(object):
                 ondelete="RESTRICT"
             ),
             nullable=True,
-            onupdate=_validate_editor)
+            onupdate=_validate_editor
+        )
 
     def dump(self):
         from pym.models import todict
@@ -294,9 +276,9 @@ def todict(o, fully_qualified=False, fmap=None):
 
     :rtype: Dict
     """
-    def convert_datetime(value):
+    def convert_datetime(v):
         try:
-            return value.strftime("%Y-%m-%d %H:%M:%S")
+            return v.strftime("%Y-%m-%d %H:%M:%S")
         except AttributeError:
             # 'NoneType' object has no attribute 'strftime'
             return None

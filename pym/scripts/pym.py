@@ -39,7 +39,7 @@ Both, json and yaml allow inline-style. Here is an example of inline YAML::
     display_name: FOO5
     email: foo5@here
     first_name: null
-    gui_token: null
+    csrf_token: null
     identity_url: null
     is_blocked: false
     is_enabled: false

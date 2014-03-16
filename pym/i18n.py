@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import functools
 import babel
 import icu
@@ -7,12 +6,12 @@ import pyramid.i18n
 
 
 DOMAIN = None
-"""Our Translation Domain.
+"""Translation Domain for ``request.translate``.
 
 MUST be set during application's initialisation, e.g. in ``includeme()``.
 """
 
-_ = pyramid.i18n.TranslationStringFactory(DOMAIN) if DOMAIN else lambda s: s
+_ = pyramid.i18n.TranslationStringFactory('Parenchym')
 
 
 def translate_choices(translate_func, choices):
@@ -147,7 +146,14 @@ def fetch_translated(request, data):
     Returns translation in requested language.
 
     :arg:`data` is a dict where each key is a language designator
-    and its value is the translated string.
+    and its value is the translated string, e.g.::
+
+        {
+            'de': 'Guten Morgen'
+            'en': 'Good Morning'
+            'fr': 'Bonjour'
+            'it': 'Lemmings'
+        }
 
     The requested language is determined from user's preferred locale
     setting and the current request's language setting.

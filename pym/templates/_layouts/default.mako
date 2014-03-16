@@ -1,7 +1,7 @@
 <%namespace name="pym" file="pym:templates/_lib/pym.mako" inheritable="True"/>
 
 <!DOCTYPE html>
-<html class="no-js" ng-app="<%block name="ng_app">mainApp</%block>">
+<html class="no-js">
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -27,13 +27,14 @@
 		</%block>
 		<script>
 		<%block name="require_config">
+            var PYM_APP_REQUIREMENTS = ['ng/angular.min'];
+            var PYM_APP_INJECTS = [];
 			var require = {
 				  baseUrl: '${request.static_url('pym:static/')}'
-				  // Dependencies are loaded before any "require()"d libraries.
-				  // It seems we must use absolute URLs here.
 				, deps: [
                     '${request.static_url('pym:static/app/plugins.js')}',
-                    '${request.static_url('pym:static/vendor/deform/js/deform.js')}',
+                    //'${request.static_url('pym:static/vendor/deform/js/deform.js')}',
+                    '${request.static_url('pym:static/app/boot-ng.js')}',
 				]
 				, paths: {
 					  'jquery': 'vendor/jquery/jquery'
@@ -48,9 +49,12 @@
                     , 'vendor/tinymce/jquery.tinymce': ['jquery']
 					, 'ui/timepicker/timepicker':      ['ui/jquery-ui']
 					, 'ui/pnotify/jquery.pnotify':     ['ui/jquery-ui']
-					, 'ng/angular.min':                ['jquery']
+					, 'ng/angular.min':                     {
+                                                                  'deps': ['jquery']
+                                                                , 'exports': 'angular'
+                                                            }
 					, 'ng/ui/ui-bootstrap-tpls-0.10.0.min': ['ng/angular.min']
-                    , 'app/main':                      ['ng/ui/ui-bootstrap-tpls-0.10.0.min']
+					, 'ng/ng-grid/ng-grid.min':             ['ng/angular.min']
 				}
 				, waitSeconds: 15
 			};
@@ -59,11 +63,11 @@
 		<%block name="scripts">
 			<script src="${request.static_url('pym:static/vendor/requirejs/require.min.js')}"></script>
 			<script>
-			require(['app/pym', 'app/main'], function(PYM) {
+			require(['app/pym'], function(PYM) {
 				PYM.init({
-					gui_token: '${request.session.get_csrf_token()}'
+					csrf_token: '${request.session.get_csrf_token()}'
 				});
-                deform.load();
+                //deform.load();
 			});
 			</script>
 		</%block>

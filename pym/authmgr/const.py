@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 SYSTEM_UID = 1
 ROOT_UID = 2
 OWNER_UID = 3
@@ -15,4 +13,3 @@ WHEEL_RID = 2
 USERS_RID = 10
 UNIT_TESTERS_RID = 98
 EVERYONE_RID = 99
-

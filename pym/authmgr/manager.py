@@ -1,80 +1,78 @@
 import datetime
-from sqlalchemy.orm import object_session
+import logging
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import and_
 
 from pym.models import DbSession
 from pym.authmgr.models import (User, Group, GroupMember)
+from .const import SYSTEM_UID
 import pym.security
 from pym.exc import AuthError
 
 
-PASSWORD_SCHEME = 'sha512_crypt'
+PASSWORD_SCHEME = 'pbkdf2_sha512'
 
 
 def load_by_principal(principal):
     """
-    Loads a principal instance by principal.
+    Loads a user instance by principal.
     """
     sess = DbSession()
     try:
         p = sess.query(User).filter(
             User.principal == principal).one()
     except NoResultFound:
-        raise AuthError('Principal not found')
+        raise AuthError("User not found by principal '{}'".format(principal))
     return p
 
 
-def _login(filter_, pwd):
+def _login(request, filter_, pwd, remote_addr):
     """
     Performs login.
 
     Called by the ``login_by...`` functions which initialise the filter.
     """
-    # TODO Log login action
-    # TODO Check for active session from same IP
-    #      --> Complain about not having logged out
-    # TODO Check for active session from different IP
-    #      --> Automatically kick other session
     filter_.append(User.is_enabled == True)
     filter_.append(User.is_blocked == False)
     sess = DbSession()
     try:
-        p = sess.query(User).filter(and_(*filter_)).one()
+        u = sess.query(User).filter(and_(*filter_)).one()
     except NoResultFound:
-        raise AuthError('Principal not found')
-    if not pym.security.pwd_context.verify(pwd, p.pwd):
+        raise AuthError('User not found')
+    # We have found the requested user, now broadcast this info so that
+    # preparations can take place before we actually log him in.
+    request.registry.notify(
+        pym.security.BeforeUserLoggedIn(request, u)
+    )
+    # Now log user in
+    if not pym.security.pwd_context.verify(pwd, u.pwd):
         raise AuthError('Wrong credentials')
-    p.login_time = datetime.datetime.now()
-    p.login_ip = None
-    p.logout_time = None
-    sess.flush()
-    return p
+    # And save some stats
+    u.login_time = datetime.datetime.now()
+    u.login_ip = remote_addr
+    u.logout_time = None
+    u.editor_id = SYSTEM_UID
+    request.registry.notify(
+        pym.security.UserLoggedIn(request, u)
+    )
+    return u
 
 
-def _can_login(filter_, pwd):
+def logout(request, uid):
     """
-    Checks if a login would be successful.
-
-    The checks are the same as for an actual login.
-
-    Called by the ``can_login_by...`` functions which initialise the filter.
+    Performs logout.
     """
-    # TODO Log login action
-    # TODO Check for active session from same IP
-    #      --> Complain about not having logged out
-    # TODO Check for active session from different IP
-    #      --> Automatically kick other session
-    filter_.append(User.is_enabled == True)
-    filter_.append(User.is_blocked == False)
     sess = DbSession()
-    try:
-        p = sess.query(User).filter(and_(*filter_)).one()
-    except NoResultFound:
-        raise AuthError('Principal not found')
-    if not pym.security.pwd_context.verify(pwd, p.pwd):
-        raise AuthError('Wrong credentials')
-    return p
+    u = sess.query(User).filter(User.id == uid).one()
+    u.login_ip = None
+    u.login_time = None
+    u.access_time = None
+    u.logout_time = datetime.datetime.now()
+    u.editor_id = SYSTEM_UID
+    request.registry.notify(
+        pym.security.UserLoggedOut(request, u)
+    )
+    return u
 
 
 def _check_credentials(*args):
@@ -86,10 +84,10 @@ def _check_credentials(*args):
     """
     for a in args:
         if not a:
-            raise AuthError('Wrong credentials')
+            raise AuthError('Missing credentials')
 
 
-def login_by_principal(principal, pwd):
+def login_by_principal(request, principal, pwd, remote_addr):
     """
     Logs user in by principal and password, returns principal instance.
 
@@ -97,19 +95,10 @@ def login_by_principal(principal, pwd):
     """
     _check_credentials(principal, pwd)
     filter_ = [User.principal == principal]
-    return _login(filter_, pwd)
+    return _login(request, filter_, pwd, remote_addr)
 
 
-def can_login_by_principal(principal, pwd):
-    """
-    Checks whether logging in by principal and password would be successful.
-    """
-    _check_credentials(principal, pwd)
-    filter_ = [User.principal == principal]
-    return _can_login(filter_, pwd)
-
-
-def login_by_email(email, pwd):
+def login_by_email(request, email, pwd, remote_addr):
     """
     Logs user in by email and password, returns principal instance.
 
@@ -117,47 +106,16 @@ def login_by_email(email, pwd):
     """
     _check_credentials(email, pwd)
     filter_ = [User.email == email]
-    return _login(filter_, pwd)
+    return _login(request, filter_, pwd, remote_addr)
 
 
-def can_login_by_email(email, pwd):
-    """
-    Checks whether logging in by email and password would be successful.
-    """
-    _check_credentials(email, pwd)
-    filter_ = [User.email == email]
-    return _can_login(filter_, pwd)
-
-
-def can_login(login, pwd):
-    if '@' in login:
-        return can_login_by_email(login, pwd)
-    else:
-        return can_login_by_principal(login, pwd)
-
-
-def login_by_identity_url(identity_url):
+def login_by_identity_url(request, identity_url, remote_addr):
     """
     Logs user in by identity URL (OpenID), returns principal instance.
 
     Raises exception :class:`pym.exc.AuthError` if user is not found.
     """
     raise NotImplementedError()
-
-
-def logout(uid):
-    """
-    Performs logout.
-    """
-    # TODO Log logout action
-    sess = DbSession()
-    p = sess.query(User).filter(User.id == uid).one()
-    p.login_ip = None
-    p.login_time = None
-    p.access_time = None
-    p.logout_time = datetime.datetime.now()
-    sess.flush()
-    return p
 
 
 def create_user(data):

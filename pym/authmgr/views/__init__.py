@@ -76,7 +76,8 @@ class LogInOutView(object):
         try:
             login = self.request.POST['login']
             pwd = self.request.POST['pwd']
-            self.request.user.login(login=login, pwd=pwd)
+            self.request.user.login(login=login, pwd=pwd,
+                remote_addr=self.request.remote_addr)
         except pym.exc.AuthError:
             msg = "Wrong credentials!"
             self.request.session.flash(dict(kind="error", text=msg))
@@ -97,8 +98,11 @@ class LogInOutView(object):
     )
     def logout(self):
         name = self.request.user.display_name
-        self.request.user.logout()
         headers = forget(self.request)
+        self.request.user.logout()
+        # Remove all session data
+        self.request.session.invalidate()
+        # Put the flash message in a pristine session
         self.request.session.flash(dict(
             kind="info",
             text='User {0} logged out'.format(name)))

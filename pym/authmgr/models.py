@@ -57,8 +57,47 @@ class NodeGroupMember(pym.lib.BaseNode):
         return "<{name}(id={id}, group_id='{g}', user_id={u}, " \
                "other_group_id={o}>".format(
                    id=self.id, g=self.group_id, u=self.user_id,
-                   o=self.other_group_id, name=self.__name__
+                   o=self.other_group_id, name=self.__class__.__name__
                )
+
+
+class GroupMember(DbBase, DefaultMixin):
+    """
+    Group member.
+
+    A group member is either a user or another group.
+    """
+    __tablename__ = "group_member"
+    __table_args__ = (
+        sa.UniqueConstraint('group_id', 'user_id', 'other_group_id',
+            name='group_member_ux'),
+        {'schema': 'pym'}
+    )
+
+    group_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.group.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=False)
+    """We define a member of this group."""
+    user_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.user.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=True)
+    """Member is this user."""
+    other_group_id = sa.Column(sa.Integer(),
+        sa.ForeignKey("pym.group.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE"
+        ),
+        nullable=True)
+    """Member is this group."""
+    # Load description only if needed
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    """Optional description."""
 
 
 class User(DbBase, DefaultMixin):
@@ -132,13 +171,14 @@ class User(DbBase, DefaultMixin):
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
     """Optional description."""
 
-    # groups = relationship('Group')
-    # """List of groups we are directly member of. Call :meth:`group_tree` to
-    # get all."""
+    groups = relationship('Group', secondary='pym.group_member',
+        foreign_keys=[GroupMember.user_id, GroupMember.group_id])
+    """List of groups we are directly member of. Call :meth:`group_tree` to
+    get all."""
 
     def __repr__(self):
         return "<{name}(id={id}, principal='{p}', email='{e}'>".format(
-            id=self.id, p=self.principal, e=self.email, name=self.__name__)
+            id=self.id, p=self.principal, e=self.email, name=self.__class__.__name__)
 
 
 sa.Index("user_principal_ux", sa.func.lower(User.__table__.c.principal),
@@ -166,7 +206,7 @@ class Tenant(DbBase, DefaultMixin):
 
     def __repr__(self):
         return "<{name}(id={id}, name='{n}'>".format(
-            id=self.id, n=self.name, name=self.__name__)
+            id=self.id, n=self.name, name=self.__class__.__name__)
 
 
 class Group(DbBase, DefaultMixin):
@@ -203,46 +243,8 @@ class Group(DbBase, DefaultMixin):
 
     def __repr__(self):
         return "<{name}(id={id}, tenant_id={t}, name='{n}'>".format(
-            id=self.id, t=self.tenant_id, n=self.name, name=self.__name__)
-
-
-class GroupMember(DbBase, DefaultMixin):
-    """
-    Group member.
-
-    A group member is either a user or another group.
-    """
-    __tablename__ = "group_member"
-    __table_args__ = (
-        sa.UniqueConstraint('group_id', 'user_id', 'other_group_id',
-            name='group_member_ux'),
-        {'schema': 'pym'}
-    )
-
-    group_id = sa.Column(sa.Integer(),
-        sa.ForeignKey("pym.group.id",
-            onupdate="CASCADE",
-            ondelete="CASCADE"
-        ),
-        nullable=False)
-    """We define a member of this group."""
-    user_id = sa.Column(sa.Integer(),
-        sa.ForeignKey("pym.user.id",
-            onupdate="CASCADE",
-            ondelete="CASCADE"
-        ),
-        nullable=True)
-    """Member is this user."""
-    other_group_id = sa.Column(sa.Integer(),
-        sa.ForeignKey("pym.group.id",
-            onupdate="CASCADE",
-            ondelete="CASCADE"
-        ),
-        nullable=True)
-    """Member is this group."""
-    # Load description only if needed
-    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
-    """Optional description."""
+            id=self.id, t=self.tenant_id, n=self.name,
+            name=self.__class__.__name__)
 
 
 class Permission(DbBase, DefaultMixin):
@@ -285,7 +287,7 @@ class Permission(DbBase, DefaultMixin):
 
     def __repr__(self):
         return "<{name}(id={id}, code_name='{cn}', parent_id='{p}'>".format(
-            id=self.id, cn=self.code_name, p=self.parent_id, name=self.__name__)
+            id=self.id, cn=self.code_name, p=self.parent_id, name=self.__class__.__name__)
 
 
 class Ace(DbBase, DefaultMixin):
@@ -329,6 +331,14 @@ class Ace(DbBase, DefaultMixin):
         nullable=True
     )
     """Reference to a user. Mandatory if group is not set."""
+    sortix = sa.Column(sa.Integer(), nullable=True, default=500)
+    """Sort index; if equal, sort by ID.
+
+    .. note::
+
+        Pyramid's authorization policy lets the first match win, so it is
+        important to setup ``sortix`` properly!
+    """
     permission_id = sa.Column(sa.Integer(),
         sa.ForeignKey("pym.permission_tree.id",
             onupdate="CASCADE",
@@ -347,11 +357,11 @@ class Ace(DbBase, DefaultMixin):
     """Optional description."""
 
     def __repr__(self):
-        return "<{name}(id={id}, resource_node_id='{r}', permission_id='{p}', " \
-               "group_id={g}, user_id={u}, allow={allow}>".format(
+        return "<{name}(id={id}, resource_node_id={r}, group_id={g}," \
+               " user_id={u}, sortix={ix}, permission_id={p}, allow={allow}>".format(
                    id=self.id, r=self.resource_node_id, p=self.permission_id,
                    g=self.group_id, u=self.user_id, allow=self.allow,
-                   name=self.__name__
+                   ix=self.sortix, name=self.__class__.__name__
                )
 
 

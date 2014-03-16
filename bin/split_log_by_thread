@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then
+    echo Need log file
+    exit 1
+fi
+
+FN_IN="$1"
+
+for i in $(seq 1 4)
+do
+    FN_OUT="/tmp/dummy$i".txt
+    grep "Dummy-$i" "$FN_IN" > "$FN_OUT"
+    echo "Written $FN_OUT"
+done
