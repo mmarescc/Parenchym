@@ -1,5 +1,6 @@
 define(PYM_APP_REQUIREMENTS, function (angular) {
     'use strict';
 
-    return angular.module('app', PYM_APP_INJECTS);
+    var PymApp = angular.module('PymApp', PYM_APP_INJECTS);
+    return PymApp;
 });

@@ -15,6 +15,7 @@ from pym.authmgr import manager as authmgr_manager
 from . import security
 from . import models
 from . import i18n
+from . import duh_view
 from .resmgr.models import root_factory
 
 
@@ -115,6 +116,9 @@ def includeme(config):
     config.add_static_view('static-deform', 'deform:static')
 
     init_auth(config.registry.settings['rc'])
+
+    # View predicates from pyramid_duh
+    config.include(duh_view)
 
 
 def init_auth(rc):

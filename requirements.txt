@@ -14,9 +14,10 @@ Sphinx
 WebOb
 alembic
 behave
-colander==1.0a5
+colander
+ColanderAlchemy
 crypto
-deform==0.9.9
+deform
 docutils
 ezodf
 ipdb

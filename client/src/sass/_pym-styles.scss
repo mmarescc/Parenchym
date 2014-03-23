@@ -1,3 +1,24 @@
+/* FONT PATH
+ * -------------------------- */
+/*
+@font-face {
+  font-family: 'Yanone Kaffeesatz';
+  src: url('#{$pym-font-path}/YanoneKaffeesatz-Thin.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+*/
+@font-face {
+  font-family: 'Yanone Kaffeesatz';
+  src: url('#{$pym-font-path}/YanoneKaffeesatz-Bold.otf');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Aroania';
+  src: url('#{$pym-font-path}/Aroania_R.otf');
+}
+
 @media (min-width: 768px) {
   .row { margin-right: 0; margin-left: 0; }
 }
@@ -17,19 +38,25 @@ body {height: 100%;}
 #page_header_top_row {
   border-bottom: solid 1px lighten($breadcrumb-border-color, 10);
   background-color: $breadcrumb-bg;
+  height: 56px;
+  vertical-align: top;
 }
 
 .page-header {
   margin: 0;
-  padding: 0 0 $font-size-base/2 0;
+  padding: 8px 0;
   display: inline-block;
   h1 {
     margin: 0;
+    font-size: $font-size-h2;
+    font-family: "Yanone Kaffeesatz";
+    color: #550000;
+    letter-spacing: 2px;
   }
 }
 
 #logo {
-  vertical-align: middle;
+  vertical-align: top;
 }
 .outer-gutter {
   padding: 0 $grid-gutter-width/2; // simulate bootstrap grid's gutter at outer sides
@@ -55,7 +82,7 @@ body > footer {
 #breadcrumbs {
   border: solid 1px $breadcrumb-border-color;
   border-top: solid 1px white;
-  font-size: 80%;
+  font-size: 90%;
   @include border-bottom-radius($border-radius-base);
   color: $breadcrumb-color;
   background-color: $breadcrumb-bg;
@@ -89,3 +116,6 @@ body > footer {
   font-size: 180%;
 }
 
+.content-margin-top {
+  margin-top: 12px;
+}

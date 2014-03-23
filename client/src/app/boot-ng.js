@@ -6,6 +6,6 @@ define(['ng/angular.min', 'app/app'], function (angular) {
     'use strict';
 
     require(['requirejs/domReady!'], function (document) {
-        angular.bootstrap(document, ['app']);
+        angular.bootstrap(document, ['PymApp']);
     });
 });

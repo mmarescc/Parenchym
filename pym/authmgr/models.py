@@ -1,19 +1,19 @@
-# -*- coding: utf-8 -*-
 import sqlalchemy as sa
-#from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import INET, HSTORE
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship
-import colander
 from pyramid.security import Allow
 
 from pym.models import (
     DbBase, DefaultMixin
 )
+import pyramid.i18n
 import pym.lib
 
 
 __all__ = ['User', 'Group', 'GroupMember']
+
+
+_ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
 
 
 class Node(pym.lib.BaseNode):
@@ -25,9 +25,9 @@ class Node(pym.lib.BaseNode):
     def __init__(self, parent):
         super().__init__(parent)
         self._title = 'AuthManager'
-        self['principal'] = NodeUser(self)
-        self['role'] = NodeGroup(self)
-        self['rolemember'] = NodeGroupMember(self)
+        self['user'] = NodeUser(self)
+        self['group'] = NodeGroup(self)
+        self['group_member'] = NodeGroupMember(self)
 
 
 class NodeUser(pym.lib.BaseNode):
@@ -122,57 +122,80 @@ class User(DbBase, DefaultMixin):
         {'schema': 'pym'}
     )
 
-    is_enabled = sa.Column(sa.Boolean, nullable=False, default=False)
+    is_enabled = sa.Column(sa.Boolean, nullable=False, default=False,
+        info={'colanderalchemy': {'title': _("Enabled?")}})
     """Tells whether or not a (human) admin has en/disabled this account."""
-    disable_reason = sa.Column(sa.Unicode(255))
+    disable_reason = sa.Column(sa.Unicode(255),
+        info={'colanderalchemy': {'title': _("Disable Reason")}})
     """Reason why admin disabled this account."""
-    is_blocked = sa.Column(sa.Boolean, nullable=False, default=False)
+    is_blocked = sa.Column(sa.Boolean, nullable=False, default=False,
+        info={'colanderalchemy': {'title': _("Blocked?")}})
     """Tells whether or not some automated process has en/disabled this
     account."""
-    blocked_since = sa.Column(sa.DateTime)
+    blocked_since = sa.Column(sa.DateTime,
+        info={'colanderalchemy': {'title': _("Blocked Since")}})
     """Timestamp when block was established."""
-    blocked_until = sa.Column(sa.DateTime)
+    blocked_until = sa.Column(sa.DateTime,
+        info={'colanderalchemy': {'title': _("Blocked Until")}})
     """Timestamp when block will automatically be released. NULL=never."""
-    block_reason = sa.Column(sa.Unicode(255))
+    block_reason = sa.Column(sa.Unicode(255),
+        info={'colanderalchemy': {'title': _("Block Reason")}})
     """Reason why block was established."""
 
-    principal = sa.Column(sa.Unicode(255), nullable=False)
+    principal = sa.Column(sa.Unicode(255), nullable=False,
+        info={'colanderalchemy': {'title': _("Principal")}})
     """Principal or user name."""
-    pwd = sa.Column(sa.Unicode(255))
+    pwd = sa.Column(sa.Unicode(255),
+        info={'colanderalchemy': {'title': _("Password")}})
     """Password. NULL means blocked for login, e.g. for system accounts."""
-    pwd_expires = sa.Column(sa.DateTime)
+    pwd_expires = sa.Column(sa.DateTime,
+        info={'colanderalchemy': {'title': _("Pwd expires")}})
     """Timestamp when current pwd expires. NULL==never."""
-    identity_url = sa.Column(sa.Unicode(255), index=True, unique=True)
+    identity_url = sa.Column(sa.Unicode(255), index=True, unique=True,
+        info={'colanderalchemy': {'title': _("Identity URL")}})
     """Used for login by OpenID."""
-    email = sa.Column(sa.Unicode(128), nullable=False)
+    email = sa.Column(sa.Unicode(128), nullable=False,
+        info={'colanderalchemy': {'title': _("Email")}})
     """Email address. Always lower cased."""
-    first_name = sa.Column(sa.Unicode(64))
+    first_name = sa.Column(sa.Unicode(64),
+        info={'colanderalchemy': {'title': _("First Name")}})
     """User's first name."""
-    last_name = sa.Column(sa.Unicode(64))
+    last_name = sa.Column(sa.Unicode(64),
+        info={'colanderalchemy': {'title': _("Last Name")}})
     """User's last name."""
-    display_name = sa.Column(sa.Unicode(255), nullable=False)
+    display_name = sa.Column(sa.Unicode(255), nullable=False,
+        info={'colanderalchemy': {'title': _("Display Name")}})
     """User is displayed like this. Usually 'first_name last_name' or
     'principal'."""
 
-    login_time = sa.Column(sa.DateTime)
+    login_time = sa.Column(sa.DateTime,
+        info={'colanderalchemy': {'title': _("Login Time")}})
     """Timestamp of current login."""
-    login_ip = sa.Column(sa.String(255))
+    login_ip = sa.Column(sa.String(255),
+        info={'colanderalchemy': {'title': _("Login IP")}})
     """IP address of logged in client."""
-    access_time = sa.Column(sa.DateTime)
+    access_time = sa.Column(sa.DateTime,
+        info={'colanderalchemy': {'title': _("Access Time")}})
     """Timestamp when site was last accessed. Used to expire session."""
-    kick_session = sa.Column(sa.Boolean, nullable=False, default=False)
+    kick_session = sa.Column(sa.Boolean, nullable=False, default=False,
+        info={'colanderalchemy': {'title': _("Kick?")}})
     """Tells whether user's session is automatically terminated on next
     access."""
-    kick_reason = sa.Column(sa.Unicode(255))
+    kick_reason = sa.Column(sa.Unicode(255),
+        info={'colanderalchemy': {'title': _("Kick Reason")}})
     """Display this message to kicked user."""
-    logout_time = sa.Column(sa.DateTime)
+    logout_time = sa.Column(sa.DateTime,
+        info={'colanderalchemy': {'title': _("Logout Time")}})
     """Timestamp of logout."""
     # Load description only if needed
-    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
+    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True,
+        info={'colanderalchemy': {'title': _("Description")}})
+    )
     """Optional description."""
 
     groups = relationship('Group', secondary='pym.group_member',
-        foreign_keys=[GroupMember.user_id, GroupMember.group_id])
+        foreign_keys=[GroupMember.user_id, GroupMember.group_id],
+        info={'colanderalchemy': {'title': _("Groups")}})
     """List of groups we are directly member of. Call :meth:`group_tree` to
     get all."""
 

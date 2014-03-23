@@ -7,9 +7,9 @@ ${parent.styles()}
 <div class="outer-gutter">
 
 <ul>
-    <li><a href="${request.resource_url(request.context['principal'])}">Manage Principals</a></li>
-    <li><a href="${request.resource_url(request.context['role'])}">Manage Roles</a></li>
-    <li><a href="${request.resource_url(request.context['rolemember'])}">Manage Rolemembers</a></li>
+    <li><a href="${request.resource_url(request.context['user'])}">Manage Users</a></li>
+    <li><a href="${request.resource_url(request.context['group'])}">Manage Groups</a></li>
+    <li><a href="${request.resource_url(request.context['group_member'])}">Manage Group Members</a></li>
 </ul>
 
 </div>

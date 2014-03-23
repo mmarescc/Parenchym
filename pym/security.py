@@ -301,6 +301,7 @@ def xhr_not_found_view(request):
     renderer='pym:templates/not_found.mako',
 )
 def not_found_view(request):
+    request.response.status = 404
     return dict()
 
 

@@ -128,6 +128,7 @@ class InitialiseDbCli(pym.cli.Cli):
 
         sess = self._sess
         with transaction.manager:
+            self._create_schema(sess)
             pym.models.create_all()
             self._create_views(sess)
             if not self.args.schema_only:
@@ -136,6 +137,12 @@ class InitialiseDbCli(pym.cli.Cli):
                 alembic_cfg = Config(self.args.alembic_config)
                 command.stamp(alembic_cfg, "head")
             mark_changed(sess)
+
+    @staticmethod
+    def _create_schema(sess):
+        sess.execute('CREATE SCHEMA IF NOT EXISTS pym')
+        mark_changed(sess)
+        transaction.commit()
 
     @staticmethod
     def _create_views(sess):

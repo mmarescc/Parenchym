@@ -35,8 +35,13 @@ from zope.sqlalchemy import ZopeTransactionExtension
 import colander
 import deform
 import deform.widget
+import pyramid.i18n
 import pym.exc
 import pym.lib
+import pym.i18n
+
+
+_ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
 
 
 # ===[ SCHEMA HELPERS ]=======
@@ -101,23 +106,19 @@ Default DB engine.
 """
 
 
-def _validate_editor(context):
-    pass
-    # if not context.current_parameters['editor_id']:
-    #     raise ValueError('Editor must be set on update.')
-
-
 class DefaultMixin(object):
     """Mixin to add Parenchym's standard fields to a model class.
 
     These are: id, ctime, owner, mtime, editor.
     """
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True, nullable=False,
+        info={'colanderalchemy': {'title': _("ID")}})
     """Primary key of table."""
 
     ctime = Column(DateTime, server_default=func.current_timestamp(),
-        nullable=False)
+        nullable=False,
+            info={'colanderalchemy': {'title': _("Creation Time")}})
     """Timestamp, creation time."""
 
     # noinspection PyMethodParameters
@@ -131,10 +132,12 @@ class DefaultMixin(object):
                 onupdate="CASCADE",
                 ondelete="RESTRICT"
             ),
-            nullable=False
+            nullable=False,
+            info={'colanderalchemy': {'title': _("OwnerID")}}
         )
 
-    mtime = Column(DateTime, onupdate=func.current_timestamp(), nullable=True)
+    mtime = Column(DateTime, onupdate=func.current_timestamp(), nullable=True,
+            info={'colanderalchemy': {'title': _("Mod Time")}})
     """Timestamp, last edit time."""
 
     # noinspection PyMethodParameters
@@ -149,13 +152,23 @@ class DefaultMixin(object):
                 ondelete="RESTRICT"
             ),
             nullable=True,
-            onupdate=_validate_editor
+            info={'colanderalchemy': {'title': _("EditorID")}}
         )
 
     def dump(self):
         from pym.models import todict
         from pprint import pprint
         pprint(todict(self))
+
+
+@sa.event.listens_for(DefaultMixin, 'before_update', propagate=True)
+def receive_before_update(mapper, connection, target):
+    will_result_in_update_sql = sa.orm.object_session(target).is_modified(
+        target, include_collections=False)
+    if will_result_in_update_sql:
+        # Now check editor_id
+        if target.editor_id is None:
+            raise ValueError('Editor must be set on update')
 
 
 # ================================

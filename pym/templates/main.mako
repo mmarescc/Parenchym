@@ -10,9 +10,9 @@ ${parent.styles()}
         <ul>
             <li><a href="${request.resource_url(request.root['__sys__']['authmgr'])}">Authentication Manager</a>
                 <ul>
-                    <li><a href="${request.resource_url(request.root['__sys__']['authmgr']['principal'])}">Manage Principals</a></li>
-                    <li><a href="${request.resource_url(request.root['__sys__']['authmgr']['role'])}">Manage Roles</a></li>
-                    <li><a href="${request.resource_url(request.root['__sys__']['authmgr']['rolemember'])}">Manage Rolemembers</a></li>
+                    <li><a href="${request.resource_url(request.root['__sys__']['authmgr']['user'])}">Manage Users</a></li>
+                    <li><a href="${request.resource_url(request.root['__sys__']['authmgr']['group'])}">Manage Groups</a></li>
+                    <li><a href="${request.resource_url(request.root['__sys__']['authmgr']['group_member'])}">Manage Group Members</a></li>
                 </ul>
             </li>
         </ul>

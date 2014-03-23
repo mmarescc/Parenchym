@@ -10,10 +10,10 @@
         </div>
         % endif
         <div class="row" id="page_header_top_row">
-            <div class="col-md-10" style="display: table-row;">
+            <div class="col-md-10">
                 <div id="logo" style="display: table-cell; padding-right: 2em;">
                     <a href="${request.resource_url(request.root)}">
-                        <img class="img" src="${request.static_url('pym:static/img/pym-logo.png')}" border="0" alt="PYM" />
+                        <img class="img" src="${request.static_url('pym:static/img/cc-genius-logo.png')}" border="0" alt="CC Genius" />
                     </a>
                 </div>
                 <div class="page-header" style="display: table-cell;">

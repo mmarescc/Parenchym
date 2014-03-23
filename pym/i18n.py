@@ -5,13 +5,10 @@ import icu
 import pyramid.i18n
 
 
-DOMAIN = None
-"""Translation Domain for ``request.translate``.
+DOMAIN = 'Parenchym'
+"""Translation Domain for ``request.translate``."""
 
-MUST be set during application's initialisation, e.g. in ``includeme()``.
-"""
-
-_ = pyramid.i18n.TranslationStringFactory('Parenchym')
+_ = pyramid.i18n.TranslationStringFactory(DOMAIN)
 
 
 def translate_choices(translate_func, choices):
