@@ -5,7 +5,7 @@
             var $;
             $ = require('jquery');
             require('ui/pnotify/jquery.pnotify');
-            require('vendor/jstorage.min');
+            //require('static-pym/vendor/jstorage.min');
             // Also create a global in case some scripts
             // that are loaded still are looking for
             // a global even when an AMD loader is in use.

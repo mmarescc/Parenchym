@@ -53,13 +53,6 @@ class NodeGroupMember(pym.lib.BaseNode):
         super().__init__(parent)
         self._title = 'Group Members'
 
-    def __repr__(self):
-        return "<{name}(id={id}, group_id='{g}', user_id={u}, " \
-               "other_group_id={o}>".format(
-                   id=self.id, g=self.group_id, u=self.user_id,
-                   o=self.other_group_id, name=self.__class__.__name__
-               )
-
 
 class GroupMember(DbBase, DefaultMixin):
     """

@@ -17,7 +17,7 @@ ${parent.styles()}
 	${parent.require_config()}
     // Angular app must inject also these libs
     PYM_APP_REQUIREMENTS.push(
-        'app/__sys__/authmgr/users'
+        'pym/__sys__/authmgr/users'
     );
     PYM_APP_INJECTS.push('sys_authmgr_users');
 </%block>
@@ -47,7 +47,7 @@ ${parent.styles()}
 </div>
 
 <script>
-require(['requirejs/domReady!', 'ng/angular.min', 'app/app', 'ng/ng-grid/ng-grid.min'], function (document, angular, PymApp) {
+require(['requirejs/domReady!', 'ng/angular.min', 'pym/app', 'ng/ng-grid/ng-grid.min'], function (document, angular, PymApp) {
     'use strict';
 
     PymApp.constant('URLS', ${urls|n});

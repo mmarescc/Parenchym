@@ -1,4 +1,4 @@
-require(['requirejs/domReady!', 'ng/angular.min', 'app/app', 'ng/angular-resource.min',
+require(['requirejs/domReady!', 'ng/angular.min', 'pym/app', 'ng/angular-resource.min',
     'ng/ui/angular-ui-router.min'], function (document, angular) {
 
     'use strict';
