@@ -4,12 +4,14 @@
 ${parent.styles()}
 </%block>
 
-<div class="outer-gutter">
 
-<ul>
-    <li><a href="${request.resource_url(request.context['user'])}">Manage Users</a></li>
-    <li><a href="${request.resource_url(request.context['group'])}">Manage Groups</a></li>
-    <li><a href="${request.resource_url(request.context['group_member'])}">Manage Group Members</a></li>
-</ul>
-
+<div class="row">
+    <div class="col-md-4">
+        <ul>
+            <li><a href="${request.resource_url(request.context['user'])}">Manage Users</a></li>
+            <li><a href="${request.resource_url(request.context['group'])}">Manage Groups</a></li>
+            <li><a href="${request.resource_url(request.context['group_member'])}">Manage Group Members</a></li>
+        </ul>
+    </div>
 </div>
+

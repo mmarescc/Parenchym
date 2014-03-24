@@ -9,6 +9,7 @@ import locale
 import uuid
 import subprocess
 import json
+import decimal
 
 import magic
 import colander
@@ -65,6 +66,8 @@ class JsonEncoder(json.JSONEncoder):
     def default(self, obj):
         if hasattr(obj, 'isoformat'):
             return obj.isoformat()
+        if isinstance(obj, decimal.Decimal):
+            return int(obj)
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
 

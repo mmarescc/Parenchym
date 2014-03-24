@@ -34,7 +34,7 @@ $body-bg:               #fff !default;
 $text-color:            $gray-dark !default;
 
 //** Global textual link color.
-$link-color:            $brand-primary !default;
+$link-color:            #0000ff !default;
 //** Link hover color set via `darken()` function.
 $link-hover-color:      darken($link-color, 15%) !default;
 
@@ -837,4 +837,4 @@ $container-lg:                 $container-large-desktop !default;
 $footer-height: 20px;
 $footer-top-margin: 50px;
 
-$pym-font-path:        "../fonts" !default;
+$pym-font-path:        "/static-pym/fonts" !default;

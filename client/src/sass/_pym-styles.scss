@@ -29,11 +29,12 @@ body {height: 100%;}
 
 #page_container {
   min-height: 100%;
-  > .content {
-    overflow: auto;
-    padding-bottom: $footer-height + $footer-top-margin;
-  }
 }
+#page_content {
+  overflow: auto;
+  padding-bottom: $footer-height + $footer-top-margin;
+}
+
 
 #page_header_top_row {
   border-bottom: solid 1px lighten($breadcrumb-border-color, 10);
@@ -82,6 +83,7 @@ body > footer {
 #breadcrumbs {
   border: solid 1px $breadcrumb-border-color;
   border-top: solid 1px white;
+  margin-bottom: $grid-gutter-width/3;
   font-size: 90%;
   @include border-bottom-radius($border-radius-base);
   color: $breadcrumb-color;
