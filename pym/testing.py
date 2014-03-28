@@ -46,7 +46,8 @@ def init_app(args, setup_logging=True):
         result = {'settings': settings}
         pym.init_auth(rc)
 
-        pym.models.init_unscoped(settings, 'db.pym.sa.')
+        #pym.models.init_unscoped(settings, 'db.pym.sa.')
+        pym.models.init(settings, 'db.pym.sa.')
 
         return result
 

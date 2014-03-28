@@ -56,4 +56,4 @@ Pym.egg-info
 .coverage
 _tmp*
 priv/*
-
+.idea
