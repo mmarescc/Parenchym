@@ -26,8 +26,10 @@ class Node(pym.lib.BaseNode):
         super().__init__(parent)
         self._title = 'AuthManager'
         self['user'] = NodeUser(self)
+        self['tenant'] = NodeTenant(self)
         self['group'] = NodeGroup(self)
         self['group_member'] = NodeGroupMember(self)
+        self['permission'] = NodePermission(self)
 
 
 class NodeUser(pym.lib.BaseNode):
@@ -36,6 +38,14 @@ class NodeUser(pym.lib.BaseNode):
     def __init__(self, parent):
         super().__init__(parent)
         self._title = 'Users'
+
+
+class NodeTenant(pym.lib.BaseNode):
+    __name__ = 'tenant'
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._title = 'Tenants'
 
 
 class NodeGroup(pym.lib.BaseNode):
@@ -52,6 +62,14 @@ class NodeGroupMember(pym.lib.BaseNode):
     def __init__(self, parent):
         super().__init__(parent)
         self._title = 'Group Members'
+
+
+class NodePermission(pym.lib.BaseNode):
+    __name__ = 'permission'
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._title = 'Permissions'
 
 
 class GroupMember(DbBase, DefaultMixin):
