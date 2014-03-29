@@ -68,7 +68,10 @@ def root_factory(request):
 
 class ResourceNode(DbBase, DefaultMixin):
     __tablename__ = "resource_tree"
-    sa.UniqueConstraint('parent_id', 'name'),
+    # XXX Cannot use this unique constraint, because we might have child
+    # XXX resources that have other unique requirements, e.g.
+    # XXX dbfs.models.FileNode that discriminates by revision.
+    #sa.UniqueConstraint('parent_id', 'name'),
     __table_args__ = (
         {'schema': 'pym'}
     )

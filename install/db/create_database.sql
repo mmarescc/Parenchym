@@ -10,6 +10,7 @@ CREATE DATABASE parenchym OWNER pym_user ENCODING 'utf-8';
 \c parenchym postgres
 CREATE EXTENSION hstore;
 CREATE EXTENSION plpython3u;
+CREATE EXTENSION "uuid-ossp";
 
 \c parenchym pym_user
 
