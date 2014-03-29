@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
-``pym`` has several subcommands to manage your Pym setup: you can
+``pym`` has several sub-commands to manage your Pym setup: you can
 manage principals (users), roles and role memberships as well as install new
 sites and check the integrity of existing sites.
 
-The subcommands are::
+The sub-commands are::
 
     list-principals     List principals
     create-principal       Create principal
@@ -19,8 +19,8 @@ The subcommands are::
     create-rolemember      Create rolemember
     delete-rolemember   Delete rolemember with given ID
 
-Type ``pym -h`` for general help and a list of the subcommands,
-``pym subcommand -h`` to get help for that subcommand.
+Type ``pym -h`` for general help and a list of the sub-commands,
+``pym sub-command -h`` to get help for that sub-command.
 
 ``pym`` allows you to use different formats for input and output.
 Choices are json, yaml (default) and tsv.
@@ -66,8 +66,8 @@ Here is an example of creating a new site::
     Locale? en_GB UTF-8
     Proceed to create a site in /tmp/sites (yes/NO)? yes
     Copied template [...]/var/site-templates/default
-    Createed role 'www.new-site.com' (108)
-    Createed principal 'sally' (111)
+    Created role 'www.new-site.com' (108)
+    Created principal 'sally' (111)
     Set principal 'sally' as member of role 'www.new-site.com'
     Done.
 
@@ -77,27 +77,22 @@ do::
     pym -c production.ini --format tsv list-rolemembers > a && gnumeric a
 
 """
+import logging
 
 import os
 import sys
 import transaction
 import argparse
 import yaml
-from pprint import pprint
+import time
 from collections import OrderedDict
-import json
 import datetime
-
-from pyramid.paster import (
-    get_appsettings,
-    setup_logging,
-    )
 
 import pym.models
 import pym.lib
 import pym.cli
-from pym.rc import Rc
-import pym.auth.manager as usrmanager
+import pym.auth.manager as authmgr
+import pym.auth.const
 
 
 # Init YAML to dump an OrderedDict like a regular dict, i.e.
@@ -113,114 +108,149 @@ class PymCli(pym.cli.Cli):
     def __init__(self):
         super().__init__()
 
-    def list_principals(self):
+    def list_users(self):
         from pym.auth.models import User
         qry = self._build_query(User)
         data = self._db_data_to_list(qry,
-            fkmaps=dict(roles=lambda it: it.name))
+            fkmaps=dict(groups=lambda it: it.name))
         self._print(data)
 
-    def create_principal(self):
+    def list_users_with_groups(self):
+        from pym.auth.models import User
+
+        #qry = self._build_query(User)
+        sess = pym.models.DbSession()
+        users = sess.query(User)
+        data = {}
+        for u in users:
+            k = "u:{} ({})".format(u.principal, u.id)
+            groups = []
+            for gr in u.groups:
+                groups.append("g:{} ({})".format(gr.name, gr.id))
+            data[k] = groups
+        self._print(data)
+
+    def create_user(self):
         data = self._parse(self.args.data)
         data['owner'] = pym.auth.const.ROOT_UID
-        rs = usrmanager.create_principal(data)
+        rs = authmgr.create_user(data)
         self._print(self._db_data_to_list([rs],
-            fkmaps=dict(role_names=lambda it: it))[0])
+            fkmaps=dict(group_names=lambda it: it))[0])
 
-    def update_principal(self):
+    def update_user(self):
         data = self._parse(self.args.data)
         data['editor'] = pym.auth.const.ROOT_UID
         data['mtime'] = datetime.datetime.now()
-        rs = usrmanager.update_principal(data)
+        rs = authmgr.update_user(data)
         self._print(self._db_data_to_list([rs])[0])
 
-    def delete_principal(self):
-        rs = usrmanager.delete_principal(self.args.id)
+    def delete_user(self):
+        authmgr.delete_user(self.args.id)
 
-    def list_roles(self):
+    def list_groups(self):
         from pym.auth.models import Group
         qry = self._build_query(Group)
         data = self._db_data_to_list(qry)
         self._print(data)
 
-    def create_role(self):
+    def list_groups_with_members(self):
+        from pym.auth.models import Group
+        #groups = self._build_query(Group)
+        sess = pym.models.DbSession()
+        groups = sess.query(Group)
+        data = {}
+        for gr in groups:
+            k = 'g:{} ({})'.format(gr.name, gr.id)
+            member_users = []
+            for mu in gr.member_users:
+                if not mu:
+                    continue
+                member_users.append('{} ({})'.format(mu.principal, mu.id))
+            member_groups = []
+            for mg in gr.member_groups:
+                if not mg:
+                    continue
+                member_groups.append('{} ({})'.format(mg.name, mg.id))
+            data[k] = {
+                'u': member_users,
+                'g': member_groups
+            }
+        self._print(data)
+
+    def create_group(self):
         data = self._parse(self.args.data)
         data['owner'] = pym.auth.const.ROOT_UID
-        rs = usrmanager.create_role(data)
+        rs = authmgr.create_group(data)
         self._print(self._db_data_to_list([rs])[0])
 
-    def update_role(self):
+    def update_group(self):
         data = self._parse(self.args.data)
         data['editor'] = pym.auth.const.ROOT_UID
         data['mtime'] = datetime.datetime.now()
-        rs = usrmanager.update_role(data)
+        rs = authmgr.update_group(data)
         self._print(self._db_data_to_list([rs])[0])
 
-    def delete_role(self):
-        rs = usrmanager.delete_role(self.args.id)
+    def delete_group(self):
+        authmgr.delete_group(self.args.id)
 
-    def list_rolemembers(self):
-        from pym.auth.models import User, Group, GroupMember
-        # Outer join to make orphans visible
-        qry = self._build_query(GroupMember) \
-            .outerjoin(Group) \
-            .outerjoin(User, GroupMember.principal_id == User.id) \
-            .create_columns(
-                GroupMember.id,
-                Group.id,
-                Group.name,
-                User.id,
-                User.principal,
-                User.is_enabled,
-                User.is_blocked,
-                GroupMember.owner,
-                GroupMember.ctime
-            )
-        fields = ['id', 'role_id', 'role', 'principal_id', 'principal',
-            'is_enabled', 'is_blocked', 'owner', 'ctime']
-        data = []
-        for row in qry.all():
-            data.append(OrderedDict(zip(fields, row[1:])))
-        self._print(data)
+    def list_group_members(self):
+        pass
+        # from pym.auth.models import User, Group, GroupMember
+        # groups = self._build_query(Group)
+        # fields = ['id', 'group_id', 'group', 'user_id', 'principal',
+        #     'is_enabled', 'is_blocked', 'owner', 'ctime']
+        # data = {}
+        # for gr in groups:
+        #     grdat = {
+        #         'user'
+        #     }
+        # self._print(data)
 
-    def create_rolemember(self):
+    def create_group_member(self):
         data = self._parse(self.args.data)
         data['owner'] = pym.auth.const.ROOT_UID
-        rs = usrmanager.create_rolemember(data)
+        rs = authmgr.create_group_member(data)
         self._print(self._db_data_to_list([rs])[0])
 
-    def delete_rolemember(self):
-        rs = usrmanager.delete_rolemember(self.args.id)
+    def delete_group_member(self):
+        authmgr.delete_group_member(self.args.id)
 
-    def create_model(self):
-        # Import all modules with models here, so that
-        # create_all() notices them.
-        import pym.models
-        import pym.vmailmgr.models
-        pym.models.create_all()
+    def _build_query(self, entity):
+        sess = pym.models.DbSession()
+        if isinstance(entity, list):
+            entities = entity
+            entity = entities[0]
+        else:
+            entities = [entity]
+        qry = sess.query(entities)
+        if self.args.idlist:
+            qry = qry.filter(entity.id.in_(self.args.idlist))
+        else:
+            if self.args.filter:
+                qry = qry.filter(self.args.filter)
+        if self.args.order:
+            qry = qry.order_by(self.args.order)
+        return qry
 
 
-def main(argv=sys.argv):
-    cli = PymCli()
-
+def parse_args(app_class, runner):
     # Main parser
     parser = argparse.ArgumentParser(description="""Pym command-line
         interface.""",
         epilog="""
         Samples:
 
-        pym -c production.ini --format tsv list-rolemembers --order
-        'role_name, principal_principal' > /tmp/a.txt && gnumeric /tmp/a.txt
+        pym -c production.ini --format tsv list-group-members --order
+        'group_name, principal_principal' > /tmp/a.txt && gnumeric /tmp/a.txt
         """)
-    parser.add_argument('-l', '--locale', help="""Set the desired locale.
-        If omitted and output goes directly to console, we automatically use
-        the console's locale.""")
-    parser.add_argument('-c', '--config', required=True,
-        help="""Path to INI file with configuration,
-            e.g. 'production.ini'""")
-    parser.add_argument('-f', '--format', default='yaml',
-        choices=['yaml', 'json', 'tsv', 'txt'],
-        help="Set format for input and output")
+
+    app_class.add_parser_args(parser, (
+        ('config', True),
+        ('locale', False),
+        ('format', False),
+        ('alembic-config', False)
+    ))
+
     parser.add_argument('--dry-run', action="store_true",
         help="The database changes will be rolled back.")
     subparsers = parser.add_subparsers(title="Commands", dest="subparser_name",
@@ -250,97 +280,117 @@ def main(argv=sys.argv):
         help="""Define sort order with literal SQL (ORDER BY clause, e.g. 'name
         DESC')""")
 
-    # Parser cmd list-principals
-    parser_list_principals = subparsers.add_parser('list-principals',
+    # Parser cmd list-users
+    parser_list_users = subparsers.add_parser('list-users',
         parents=[parser_db_lister],
-        help="List principals")
-    parser_list_principals.set_defaults(func=cli.list_principals)
+        help="List users")
+    parser_list_users.set_defaults(func=runner.list_users)
+    parser_list_users_with_groups = subparsers.add_parser('list-users-with-groups',
+        parents=[parser_db_lister],
+        help="List users with their groups.")
+    parser_list_users_with_groups.set_defaults(func=runner.list_users_with_groups)
 
-    # Parser cmd create-principal
-    parser_create_principal = subparsers.add_parser('create-principal',
+    # Parser cmd create-user
+    parser_create_user = subparsers.add_parser('create-user',
         parents=[parser_db_edit],
-        help="Create principal",
-        epilog="""You might want to try command 'list-principals'
+        help="Create user",
+        epilog="""You might want to try command 'list-users'
             to see which fields are available."""
     )
-    parser_create_principal.set_defaults(func=cli.create_principal)
+    parser_create_user.set_defaults(func=runner.create_user)
 
-    # Parser cmd update-principal
-    parser_update_principal = subparsers.add_parser('update-principal',
+    # Parser cmd update-user
+    parser_update_user = subparsers.add_parser('update-user',
         parents=[parser_db_edit],
-        help="Update principal with given ID",
-        epilog="""You might want to try command 'list-principals'
+        help="Update user with given ID",
+        epilog="""You might want to try command 'list-users'
             to see which fields are available."""
     )
-    parser_update_principal.set_defaults(func=cli.update_principal)
+    parser_update_user.set_defaults(func=runner.update_user)
 
-    # Parser cmd delete-principal
-    parser_delete_principal = subparsers.add_parser('delete-principal',
+    # Parser cmd delete-user
+    parser_delete_user = subparsers.add_parser('delete-user',
         parents=[parser_db_delete],
-        help="Delete principal with given ID",
+        help="Delete user with given ID",
     )
-    parser_delete_principal.set_defaults(func=cli.delete_principal)
+    parser_delete_user.set_defaults(func=runner.delete_user)
 
-    # Parser cmd list-roles
-    parser_list_roles = subparsers.add_parser('list-roles',
+    # Parser cmd list-groups
+    parser_list_groups = subparsers.add_parser('list-groups',
         parents=[parser_db_lister],
-        help="List roles")
-    parser_list_roles.set_defaults(func=cli.list_roles)
-
-    # Parser cmd create-role
-    parser_create_role = subparsers.add_parser('create-role',
-        parents=[parser_db_edit],
-        help="Create role")
-    parser_create_role.set_defaults(func=cli.create_role)
-
-    # Parser cmd update-role
-    parser_update_role = subparsers.add_parser('update-role',
-        parents=[parser_db_edit],
-        help="Update role with given ID")
-    parser_update_role.set_defaults(func=cli.update_role)
-
-    # Parser cmd delete-role
-    parser_delete_role = subparsers.add_parser('delete-role',
-        parents=[parser_db_delete],
-        help="Delete role with given ID")
-    parser_delete_role.set_defaults(func=cli.delete_role)
-
-    # Parser cmd list-rolemembers
-    parser_list_rolemembers = subparsers.add_parser('list-rolemembers',
+        help="List groups")
+    parser_list_groups.set_defaults(func=runner.list_groups)
+    parser_list_groups_with_members = subparsers.add_parser('list-groups-with-members',
         parents=[parser_db_lister],
-        help="List rolemembers")
-    parser_list_rolemembers.set_defaults(func=cli.list_rolemembers)
+        help="List groups with their members.")
+    parser_list_groups_with_members.set_defaults(func=runner.list_groups_with_members)
 
-    # Parser cmd create-rolemember
-    parser_create_rolemember = subparsers.add_parser('create-rolemember',
+    # Parser cmd create-group
+    parser_create_group = subparsers.add_parser('create-group',
         parents=[parser_db_edit],
-        help="Create rolemember")
-    parser_create_rolemember.set_defaults(func=cli.create_rolemember)
+        help="Create group")
+    parser_create_group.set_defaults(func=runner.create_group)
 
-    # Parser cmd delete-rolemember
-    parser_delete_rolemember = subparsers.add_parser('delete-rolemember',
+    # Parser cmd update-group
+    parser_update_group = subparsers.add_parser('update-group',
+        parents=[parser_db_edit],
+        help="Update group with given ID")
+    parser_update_group.set_defaults(func=runner.update_group)
+
+    # Parser cmd delete-group
+    parser_delete_group = subparsers.add_parser('delete-group',
         parents=[parser_db_delete],
-        help="Delete rolemember with given ID")
-    parser_delete_rolemember.set_defaults(func=cli.delete_rolemember)
+        help="Delete group with given ID")
+    parser_delete_group.set_defaults(func=runner.delete_group)
 
-    # Parser cmd create-model
-    parser_create_model = subparsers.add_parser('create-model',
-        help="Create the DB model")
-    parser_create_model.set_defaults(func=cli.create_model)
+    # Parser cmd list-group-members
+    parser_list_group_members = subparsers.add_parser('list-group-members',
+        parents=[parser_db_lister],
+        help="List group-members")
+    parser_list_group_members.set_defaults(func=runner.list_group_members)
 
-    # Parse args and run command
-    args = parser.parse_args()
-    ###pprint(args); sys.exit()
-    pym.lib.init_cli_locale(args.locale, print_info=True)
-    cli.init_app(args)
+    # Parser cmd create-group-member
+    parser_create_group_member = subparsers.add_parser('create-group-member',
+        parents=[parser_db_edit],
+        help="Create group-member")
+    parser_create_group_member.set_defaults(func=runner.create_group_member)
+
+    # Parser cmd delete-group-member
+    parser_delete_group_member = subparsers.add_parser('delete-group-member',
+        parents=[parser_db_delete],
+        help="Delete group-member with given ID")
+    parser_delete_group_member.set_defaults(func=runner.delete_group_member)
+
+    return parser.parse_args()
+
+
+def main(argv=None):
+    if not argv:
+        argv = sys.argv
+    start_time = time.time()
+    app_name = os.path.basename(argv[0])
+    lgg = logging.getLogger('cli.' + app_name)
+
+    runner = PymCli()
+    args = parse_args(PymCli, runner)
+
+    runner.init_app(args, lgg=lgg, setup_logging=True)
     transaction.begin()
+    # noinspection PyBroadException
     try:
         args.func()
+    except Exception as exc:
+        transaction.abort()
+        lgg.exception(exc)
+        lgg.fatal('Changes rolled back.')
+        lgg.fatal('Program aborted!')
+    else:
         if args.dry_run:
             transaction.abort()
+            lgg.info('Dry-run. Changes rolled back.')
         else:
             transaction.commit()
-    except:
-        transaction.abort()
-        raise
-    print("Done.", file=sys.stderr)
+            lgg.info('Changes committed.')
+    finally:
+        lgg.info('{} secs.'.format(time.time() - start_time))
+        # Do some cleanup or saving etc.

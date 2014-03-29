@@ -93,6 +93,12 @@ class Cli(object):
                     required=x[1],
                     help="Path to alembic's INI file"
                 )
+            elif x[0] == 'format':
+                parser.add_argument('-f', '--format', default='yaml',
+                    choices=['yaml', 'json', 'tsv', 'txt'],
+                    required=x[1],
+                    help="Set format for input and output"
+                )
 
     def init_app(self, args, lgg=None, rc=None, rc_key=None, setup_logging=True):
         """
@@ -304,18 +310,6 @@ class Cli(object):
     @staticmethod
     def _parse_yaml(data):
         return yaml.load(data)
-
-    def _build_query(self, entity):
-        sess = pym.models.DbSession()
-        qry = sess.query(entity)
-        if self.args.idlist:
-            qry = qry.filter(entity.id.in_(self.args.idlist))
-        else:
-            if self.args.filter:
-                qry = qry.filter(self.args.filter)
-        if self.args.order:
-            qry = qry.order_by(self.args.order)
-        return qry
 
     @property
     def sess(self):

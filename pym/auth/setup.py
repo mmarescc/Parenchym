@@ -79,25 +79,25 @@ SQL_VW_GROUP_MEMBER_BROWSE = """
 CREATE OR REPLACE VIEW pym.vw_group_member_browse AS
 (
     SELECT gm.id                        AS id,
-           "group".id                     AS group_id,
+           gr.id                        AS group_id,
            tenant.id                    AS tenant_id,
            tenant.name                  AS tenant_name,
-           "group".name                   AS group_name,
-           "user".id                      AS user_id,
-           "user".principal               AS user_principal,
-           "user".email                   AS user_email,
-           "user".display_name            AS user_display_name,
-           gro.id                       AS other_group_id,
-           gro.name                     AS other_group_name,
+           gr.name                      AS group_name,
+           mu.id                        AS member_user_id,
+           mu.principal                 AS member_user_principal,
+           mu.email                     AS member_user_email,
+           mu.display_name              AS member_user_display_name,
+           mgr.id                       AS member_group_id,
+           mgr.name                     AS member_group_name,
            gm.ctime                     AS ctime,
-           gm.owner_id                     AS owner_id,
+           gm.owner_id                  AS owner_id,
            o.display_name               AS owner_display_name
     FROM      pym.group_member gm
-    JOIN      pym."user"  AS o      ON gm.owner_id    = o.id
-    JOIN      pym."group"           ON gm.group_id       = "group".id
-    LEFT JOIN pym."user"            ON gm.user_id        = "user".id
-    LEFT JOIN pym."group" AS gro    ON gm.other_group_id = gro.id
-    LEFT JOIN pym.tenant            ON "group".tenant_id      = tenant.id
+    JOIN      pym."user"  AS o      ON gm.owner_id        = o.id
+    JOIN      pym."group" AS gr     ON gm.group_id        = gr.id
+    LEFT JOIN pym."user"  AS mu     ON gm.member_user_id  = mu.id
+    LEFT JOIN pym."group" AS mgr    ON gm.member_group_id = mgr.id
+    LEFT JOIN pym.tenant            ON gr.tenant_id       = tenant.id
 );"""
 
 

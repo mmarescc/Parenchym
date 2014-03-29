@@ -3,6 +3,7 @@ import pyramid.security
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import INET, HSTORE
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 from pyramid.security import Allow
 import pyramid.i18n
 
@@ -84,8 +85,10 @@ class GroupMember(DbBase, DefaultMixin):
     """
     __tablename__ = "group_member"
     __table_args__ = (
-        sa.UniqueConstraint('group_id', 'user_id', 'other_group_id',
-            name='group_member_ux'),
+        sa.UniqueConstraint('group_id', 'member_user_id',
+            name='group_member_user_ux'),
+        sa.UniqueConstraint('group_id', 'member_group_id',
+            name='group_member_group_ux'),
         {'schema': 'pym'}
     )
 
@@ -95,24 +98,28 @@ class GroupMember(DbBase, DefaultMixin):
             ondelete="CASCADE"
         ),
         nullable=False)
-    """We define a member of this group."""
-    user_id = sa.Column(sa.Integer(),
+    """This group is the container."""
+    member_user_id = sa.Column(sa.Integer(),
         sa.ForeignKey("pym.user.id",
             onupdate="CASCADE",
             ondelete="CASCADE"
         ),
         nullable=True)
-    """Member is this user."""
-    other_group_id = sa.Column(sa.Integer(),
+    """This user is the member."""
+    member_group_id = sa.Column(sa.Integer(),
         sa.ForeignKey("pym.group.id",
             onupdate="CASCADE",
             ondelete="CASCADE"
         ),
         nullable=True)
-    """Member is this group."""
+    """This group is the member."""
     # Load description only if needed
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
     """Optional description."""
+
+    group = relationship('Group', foreign_keys=[group_id])
+    member_user = relationship('User', foreign_keys=[member_user_id])
+    member_group = relationship('Group', foreign_keys=[member_group_id])
 
 
 class User(DbBase, DefaultMixin):
@@ -208,10 +215,13 @@ class User(DbBase, DefaultMixin):
     )
     """Optional description."""
 
-    groups = relationship('Group', secondary='pym.group_member',
-        foreign_keys=[GroupMember.user_id, GroupMember.group_id],
-        info={'colanderalchemy': {'title': _("Groups")}})
-    """List of groups we are directly member of. Call :meth:`group_tree` to
+    group_memberships = relationship('GroupMember',
+        foreign_keys='GroupMember.member_user_id')
+    """List of our direct group memberships. Call :meth:`all_group_memberships`
+    to get all."""
+    groups = association_proxy('group_memberships', 'group')
+        #info={'colanderalchemy': {'title': _("Groups")}})
+    """List of groups we are directly member of. Call :meth:`all_groups` to
     get all."""
 
     def __repr__(self):
@@ -278,6 +288,14 @@ class Group(DbBase, DefaultMixin):
     # Load description only if needed
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
     """Optional description."""
+
+    group_memberships = relationship('GroupMember',
+        foreign_keys='GroupMember.group_id')
+    """List of memberships in which we are the container."""
+    member_groups = association_proxy('group_memberships', 'member_group')
+    """List of groups that are our members."""
+    member_users = association_proxy('group_memberships', 'member_user')
+    """List of users that are our members."""
 
     def __repr__(self):
         return "<{name}(id={id}, tenant_id={t}, name='{n}'>".format(

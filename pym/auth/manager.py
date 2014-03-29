@@ -120,7 +120,7 @@ def create_user(data):
 
     Data fields:
     - ``owner_id``: Required
-    - ``groups``:   Optional list of group names. group 'users' is always
+    - ``groups``:   Optional list of group names. Group 'users' is always
                     automatically set.
                     If we provide a value for groups that evaluates to False,
                     this account is not member of any group.
@@ -143,13 +143,10 @@ def create_user(data):
         if not data['pwd'].startswith(('{', '$')):
             data['pwd'] = pym.security.pwd_context.encrypt(data['pwd'],
                 PASSWORD_SCHEME)
-    # If display_name is not explicitly set, use principal, thus
-    # preserving its case (real principal will be stored lower case).
+    # If display_name is not explicitly set, use principal.
     if not 'display_name' in data:
         data['display_name'] = data['principal']
-    # Allow only lowercase principals
-    data['principal'] = data['principal'].lower()
-    # Ditto email
+    # Allow only lowercase email
     data['email'] = data['email'].lower()
 
     sess = DbSession()
@@ -175,7 +172,7 @@ def create_user(data):
             sess.add(g)
             sess.flush()
         gm = GroupMember()
-        gm.user_id = u.id
+        gm.member_user_id = u.id
         gm.group_id = g.id
         gm.owner_id = u.owner_id
         sess.add(gm)
@@ -200,17 +197,14 @@ def update_user(data):
         if not data['pwd'].startswith(('{', '$')):
             data['pwd'] = pym.security.pwd_context.encrypt(data['pwd'],
                 PASSWORD_SCHEME)
-    # Allow only lowercase principals
-    if 'principal' in data:
-        data['principal'] = data['principal'].lower()
-    # Ditto email
+    # Allow only lowercase email
     if 'email' in data:
         data['email'] = data['email'].lower()
     sess = DbSession()
     u = sess.query(User).filter(User.id == data['id']).one()
     for k, v in data.items():
         setattr(u, k, v)
-    # If display_name is emptied, use principal
+    # If display_name is empty, use principal
     if not u.display_name:
         u.display_name = u.principal
     sess.flush()
