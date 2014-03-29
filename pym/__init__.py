@@ -111,7 +111,7 @@ def includeme(config):
     models.init(config.registry.settings, 'db.pym.sa.')
 
     # Run scan() which also imports db models
-    config.scan()
+    config.scan('pym')
 
     # Static assets for this project
     config.add_static_view('static-pym', 'pym:static')

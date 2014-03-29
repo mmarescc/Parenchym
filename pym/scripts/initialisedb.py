@@ -25,7 +25,7 @@ class InitialiseDbCli(pym.cli.Cli):
         super().__init__()
 
     def run(self):
-
+        self._config.scan('pym')
         sess = self._sess
         with transaction.manager:
             self._create_schema(sess)
