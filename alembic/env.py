@@ -5,7 +5,7 @@ from logging.config import fileConfig
 import os
 
 from pym.rc import Rc
-import pym.authmgr.models
+import pym.auth.models
 import pym.models
 import pym.models.schema
 

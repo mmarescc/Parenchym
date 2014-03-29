@@ -4,8 +4,8 @@ import sqlalchemy as sa
 import sqlalchemy.orm.exc
 import pyramid.paster
 import pyramid.config
-from pym.authmgr.const import UNIT_TESTER_UID, SYSTEM_UID
-import pym.authmgr.models as pam
+from pym.auth.const import UNIT_TESTER_UID, SYSTEM_UID
+import pym.auth.models as pam
 from pym.rc import Rc
 import pym
 import pym.models

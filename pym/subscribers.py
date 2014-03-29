@@ -10,7 +10,7 @@ import pyramid.session
 from pyramid.i18n import get_localizer
 
 import pym.models
-import pym.authmgr.models
+import pym.auth.models
 import pym.events
 
 
@@ -62,7 +62,7 @@ def add_renderer_globals(event):
 # def log_activity(event):
 #     r = event.request
 #     if not 'static-' in r.url:
-#         a = pym.authmgr.models.ActivityLog()
+#         a = pym.auth.models.ActivityLog()
 #         a.principal = r.user.principal
 #         a.method = r.method
 #         a.url = r.url

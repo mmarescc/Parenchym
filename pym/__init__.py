@@ -12,8 +12,9 @@ from pyramid_mailer import Mailer
 import pym.duh_view
 import pym.i18n
 import pym.models
-import pym.resmgr.models
-import pym.authmgr.manager
+import pym.res
+import pym.res.models
+import pym.auth.manager
 
 from .rc import Rc
 
@@ -70,14 +71,14 @@ def includeme(config):
     deform.Form.set_zpt_renderer(search_path, translator=translator)
 
     # Init resource root
-    config.set_root_factory(resmgr.models.root_factory)
+    config.set_root_factory(res.models.root_factory)
 
     # Init session
     session_factory = session_factory_from_settings(config.registry.settings)
     config.set_session_factory(session_factory)
 
-    from .authmgr import group_finder
-    from .authmgr.models import get_current_user
+    from .auth import group_finder
+    from .auth.models import get_current_user
 
     # Init Auth and Authz
     auth_pol = SessionAuthenticationPolicy(
@@ -117,16 +118,11 @@ def includeme(config):
     config.add_static_view('static-deform', 'deform:static')
 
     init_auth(config.registry.settings['rc'])
-    init_views(config.registry.settings['rc'])
 
     # View predicates from pyramid_duh
     config.include(duh_view)
 
 
 def init_auth(rc):
-    authmgr.manager.PASSWORD_SCHEME = rc.g('auth.password_scheme',
-        authmgr.manager.PASSWORD_SCHEME).lower()
-
-
-def init_views(rc):
-    pass
+    pym.auth.manager.PASSWORD_SCHEME = rc.g('auth.password_scheme',
+        pym.auth.manager.PASSWORD_SCHEME).lower()

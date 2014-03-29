@@ -1,8 +1,8 @@
 from behave import (
     given, when, then
 )
-from pym.resmgr.models import ResourceNode
-from pym.authmgr.const import UNIT_TESTER_UID
+from pym.res.models import ResourceNode
+from pym.auth.const import UNIT_TESTER_UID
 
 
 @given('my root node is {name}/{kind}')

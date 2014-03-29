@@ -9,13 +9,13 @@
 # )
 # from pyramid import testing
 # from pyramid.config import Configurator
-# from pym.authmgr.models import CurrentUser
+# from pym.auth.models import CurrentUser
 #
-# from pym.authmgr.const import UNIT_TESTER_UID, SYSTEM_UID
+# from pym.auth.const import UNIT_TESTER_UID, SYSTEM_UID
 # from pym.rc import Rc
 # import pym.exc
 # import pym.models
-# import pym.authmgr.models as aam
+# import pym.auth.models as aam
 #
 #
 # class CurrentUser(CurrentUser):

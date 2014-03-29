@@ -1,6 +1,6 @@
 <%!
 import pym.lib
-import pym.resmgr
+import pym.res
 from pprint import pformat
 %>
 ## ===[ BREADCRUMBS ]=======

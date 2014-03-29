@@ -21,7 +21,7 @@ _ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
 
 
 class Node(pym.lib.BaseNode):
-    __name__ = 'authmgr'
+    __name__ = 'auth'
     __acl__ = [
         (Allow, 'r:wheel', 'admin')
     ]
@@ -597,8 +597,8 @@ class AuthProviderFactory(object):
     @staticmethod
     def factory(type_):
         if type_ == 'sqlalchemy':
-            import pym.authmgr.manager
-            return pym.authmgr.manager
+            from . import manager
+            return manager
         raise Exception("Unknown auth provider: '{0}'".format(type_))
 
 

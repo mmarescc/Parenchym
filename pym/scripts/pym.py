@@ -97,7 +97,7 @@ import pym.models
 import pym.lib
 import pym.cli
 from pym.rc import Rc
-import pym.authmgr.manager as usrmanager
+import pym.auth.manager as usrmanager
 
 
 # Init YAML to dump an OrderedDict like a regular dict, i.e.
@@ -114,7 +114,7 @@ class PymCli(pym.cli.Cli):
         super().__init__()
 
     def list_principals(self):
-        from pym.authmgr.models import User
+        from pym.auth.models import User
         qry = self._build_query(User)
         data = self._db_data_to_list(qry,
             fkmaps=dict(roles=lambda it: it.name))
@@ -122,14 +122,14 @@ class PymCli(pym.cli.Cli):
 
     def create_principal(self):
         data = self._parse(self.args.data)
-        data['owner'] = pym.authmgr.const.ROOT_UID
+        data['owner'] = pym.auth.const.ROOT_UID
         rs = usrmanager.create_principal(data)
         self._print(self._db_data_to_list([rs],
             fkmaps=dict(role_names=lambda it: it))[0])
 
     def update_principal(self):
         data = self._parse(self.args.data)
-        data['editor'] = pym.authmgr.const.ROOT_UID
+        data['editor'] = pym.auth.const.ROOT_UID
         data['mtime'] = datetime.datetime.now()
         rs = usrmanager.update_principal(data)
         self._print(self._db_data_to_list([rs])[0])
@@ -138,20 +138,20 @@ class PymCli(pym.cli.Cli):
         rs = usrmanager.delete_principal(self.args.id)
 
     def list_roles(self):
-        from pym.authmgr.models import Group
+        from pym.auth.models import Group
         qry = self._build_query(Group)
         data = self._db_data_to_list(qry)
         self._print(data)
 
     def create_role(self):
         data = self._parse(self.args.data)
-        data['owner'] = pym.authmgr.const.ROOT_UID
+        data['owner'] = pym.auth.const.ROOT_UID
         rs = usrmanager.create_role(data)
         self._print(self._db_data_to_list([rs])[0])
 
     def update_role(self):
         data = self._parse(self.args.data)
-        data['editor'] = pym.authmgr.const.ROOT_UID
+        data['editor'] = pym.auth.const.ROOT_UID
         data['mtime'] = datetime.datetime.now()
         rs = usrmanager.update_role(data)
         self._print(self._db_data_to_list([rs])[0])
@@ -160,7 +160,7 @@ class PymCli(pym.cli.Cli):
         rs = usrmanager.delete_role(self.args.id)
 
     def list_rolemembers(self):
-        from pym.authmgr.models import User, Group, GroupMember
+        from pym.auth.models import User, Group, GroupMember
         # Outer join to make orphans visible
         qry = self._build_query(GroupMember) \
             .outerjoin(Group) \
@@ -185,7 +185,7 @@ class PymCli(pym.cli.Cli):
 
     def create_rolemember(self):
         data = self._parse(self.args.data)
-        data['owner'] = pym.authmgr.const.ROOT_UID
+        data['owner'] = pym.auth.const.ROOT_UID
         rs = usrmanager.create_rolemember(data)
         self._print(self._db_data_to_list([rs])[0])
 

@@ -12,7 +12,7 @@ import zope.interface
 
 import pym.lib
 import pym.exc
-import pym.authmgr.models
+import pym.auth.models
 from pym.models import (DbBase, DefaultMixin)
 
 
@@ -52,7 +52,7 @@ class SystemNode(pym.lib.BaseNode):
     def __init__(self, parent):
         super().__init__(parent)
         self._title = "System"
-        self['authmgr'] = pym.authmgr.models.Node(self)
+        self['authmgr'] = pym.auth.models.Node(self)
 
 
 root = Root(None)
@@ -124,7 +124,7 @@ class ResourceNode(DbBase, DefaultMixin):
     still be able to attach your views to an interface (view config
     ``context``).
 
-    E.g. 'pym.resmgr:IRes'
+    E.g. 'pym.res:IRes'
     """
 
     children = relationship("ResourceNode",

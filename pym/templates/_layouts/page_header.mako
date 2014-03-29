@@ -1,6 +1,6 @@
 <%page args="parent, pym, render_flash" />
 <%!
-    from pym.resmgr.helper import linkto_help
+    from pym.res.helper import linkto_help
 %>
 <%block name="pageHeader" args="parent, pym, render_flash">
     <header>

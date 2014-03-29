@@ -13,7 +13,7 @@ from alembic import command
 import pym.models
 import pym.cli
 import pym.lib
-import pym.authmgr.setup
+import pym.auth.setup
 
 import pym.cli
 import pym.lib
@@ -46,11 +46,11 @@ class InitialiseDbCli(pym.cli.Cli):
 
     @staticmethod
     def _create_views(sess):
-        pym.authmgr.setup.create_views(sess)
+        pym.auth.setup.create_views(sess)
 
     def _setup_users(self, sess):
         root_pwd = self.rc.g('auth.user_root.pwd')
-        pym.authmgr.setup.setup_users(sess, root_pwd=root_pwd)
+        pym.auth.setup.setup_users(sess, root_pwd=root_pwd)
 
 
 def parse_args(app_class):

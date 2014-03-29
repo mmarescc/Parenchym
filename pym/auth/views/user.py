@@ -8,9 +8,9 @@ import colanderalchemy
 import pyramid.i18n
 import pyramid.httpexceptions as hexc
 
-import pym.authmgr
-import pym.authmgr.models as pam
-import pym.authmgr.manager as pamgr
+import pym.auth
+import pym.auth.models as pam
+import pym.auth.manager as pamgr
 from pym.models import DbSession, todata
 import pym.lib
 import pym.i18n
@@ -94,7 +94,7 @@ def build_schema(field_list, translate_func):
 
 
 @view_defaults(
-    context=pym.authmgr.models.NodeUser,
+    context=pym.auth.models.NodeUser,
     permission='manage_auth'
 )
 class UserView(object):
@@ -112,7 +112,7 @@ class UserView(object):
 
     @view_config(
         name='',
-        renderer='pym:authmgr/templates/user/index.mako',
+        renderer='pym:auth/templates/user/index.mako',
     )
     def index(self):
         sess = self.sess

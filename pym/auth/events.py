@@ -67,7 +67,7 @@ class BeforeUserLoggedIn(object):
     found the user account, but before we actually log him in.
 
     The event instance has attributes ``request``, which is the current request
-    object and, ``user``, which is a :class:`pym.authmgr.models.User` object.
+    object and, ``user``, which is a :class:`pym.auth.models.User` object.
 
     This event class implements the :class:`IUserLoggedIn` interface.
     """
@@ -91,7 +91,7 @@ class UserLoggedIn(object):
     successfully logged in.
 
     The event instance has attributes ``request``, which is the current request
-    object and, ``user``, which is a :class:`pym.authmgr.models.User` object.
+    object and, ``user``, which is a :class:`pym.auth.models.User` object.
 
     This event class implements the :class:`IUserLoggedIn` interface.
     """
@@ -115,7 +115,7 @@ class UserLoggedOut(object):
     logged out.
 
     The event instance has attributes ``request``, which is the current request
-    object and, ``user``, which is a :class:`pym.authmgr.models.User` object.
+    object and, ``user``, which is a :class:`pym.auth.models.User` object.
 
     This event class implements the :class:`IUserLoggedIn` interface.
     """

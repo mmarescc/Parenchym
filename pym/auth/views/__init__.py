@@ -6,7 +6,7 @@ from pyramid.security import (
     , NO_PERMISSION_REQUIRED
 )
 
-import pym.resmgr.models
+import pym.res.models
 import pym.lib
 import pym.exc
 
@@ -28,14 +28,14 @@ class UsrMgrView(object):
 
     @view_config(
         name='',
-        renderer='pym:authmgr/templates/index.mako',
+        renderer='pym:auth/templates/index.mako',
     )
     def index(self):
         return dict()
 
 
 @view_defaults(
-    context=pym.resmgr.models.Root,
+    context=pym.res.models.Root,
     permission=NO_PERMISSION_REQUIRED
 )
 class LogInOutView(object):
@@ -58,7 +58,7 @@ class LogInOutView(object):
 
     @view_config(
         name='login',
-        renderer='pym:authmgr/templates/login.mako',
+        renderer='pym:auth/templates/login.mako',
         request_method='GET'
     )
     def login(self):
