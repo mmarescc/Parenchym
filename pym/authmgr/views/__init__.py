@@ -100,8 +100,6 @@ class LogInOutView(object):
         name = self.request.user.display_name
         headers = forget(self.request)
         self.request.user.logout()
-        # Remove all session data
-        self.request.session.invalidate()
         # Put the flash message in a pristine session
         self.request.session.flash(dict(
             kind="info",

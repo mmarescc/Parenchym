@@ -156,6 +156,8 @@ class User(object):
         Logout, resets metadata back to nobody.
         """
         self.auth_provider.logout(self._request, self.uid)
+        # Remove all session data
+        self._request.session.invalidate()
         self.init_nobody()
         self._request.session.new_csrf_token()
 
