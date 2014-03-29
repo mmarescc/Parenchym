@@ -1,16 +1,20 @@
+import babel
+import pyramid.security
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import INET, HSTORE
 from sqlalchemy.orm import relationship
 from pyramid.security import Allow
+import pyramid.i18n
 
 from pym.models import (
     DbBase, DefaultMixin
 )
-import pyramid.i18n
 import pym.lib
+import pym.exc
 
-
-__all__ = ['User', 'Group', 'GroupMember']
+from .events import UserAuthError
+from .const import (NOBODY_UID, NOBODY_PRINCIPAL, NOBODY_EMAIL,
+    NOBODY_DISPLAY_NAME, WHEEL_RID)
 
 
 _ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
@@ -433,3 +437,179 @@ def get_vw_group_browse():
 def get_vw_group_member_browse():
     return sa.Table('vw_group_member_browse', GroupMember.metadata, autoload=True,
         schema='pym')
+
+
+class CurrentUser(object):
+
+    SESS_KEY = 'AuthMgr/CurrentUser'
+
+    def __init__(self, request):
+        self._request = request
+        self._metadata = None
+        self._groups = []
+        self._group_names = []
+        self.uid = None
+        self.principal = None
+        self.init_nobody()
+        self.auth_provider = AuthProviderFactory.factory(
+            request.registry.settings['auth.provider'])
+
+    def load_by_principal(self, principal):
+        u = self.auth_provider.load_by_principal(principal)
+        self.init_from_user(u)
+
+    def init_nobody(self):
+        self.uid = NOBODY_UID
+        self.principal = NOBODY_PRINCIPAL
+        self._metadata = dict(
+            email=NOBODY_EMAIL,
+            display_name=NOBODY_DISPLAY_NAME
+        )
+        self.set_groups([])
+
+    def init_from_user(self, u):
+        """
+        Initialises authenticated user.
+        """
+        self.uid = u.id
+        self.principal = u.principal
+        self.set_groups(u.groups)
+        self._metadata['email'] = u.email
+        self._metadata['first_name'] = u.first_name
+        self._metadata['last_name'] = u.last_name
+        self._metadata['display_name'] = u.display_name
+
+    def is_auth(self):
+        """Tells whether user is authenticated, i.e. is not nobody
+        """
+        return self.uid != NOBODY_UID
+
+    def is_wheel(self):
+        if not self._groups:
+            return False
+        for g in self._groups:
+            if g.id == WHEEL_RID:
+                return True
+        return False
+
+    def login(self, login, pwd, remote_addr):
+        """
+        Login by principal/email and password.
+
+        Returns True on success, else False.
+        """
+        # Login methods throw AuthError exception. Caller should handle them.
+        try:
+            if '@' in login:
+                p = self.auth_provider.login_by_email(request=self._request,
+                    email=login, pwd=pwd, remote_addr=remote_addr)
+            else:
+                p = self.auth_provider.login_by_principal(request=self._request,
+                    principal=login, pwd=pwd, remote_addr=remote_addr)
+        except pym.exc.AuthError as exc:
+            self._request.registry.notify(
+                UserAuthError(self._request, login, pwd,
+                    remote_addr, exc)
+            )
+            raise
+        self.init_from_user(p)
+        self._request.session.new_csrf_token()
+        return True
+
+    def impersonate(self, principal):
+        """
+        Loads a different user into current session.
+
+        Keep in mind that all session data apart from the user data will not
+        change.
+
+        :param principal: Principal or instance of new user
+        :return: Instance of new user
+        """
+        if isinstance(principal, str):
+            u = self.auth_provider.load_by_principal(principal)
+        else:
+            u = principal
+        self._request.session[self.__class__.SESS_KEY + '/prev_user'] = \
+            self.principal
+        self.init_from_user(u)
+        self._request.session.new_csrf_token()
+        return u
+
+    def repersonate(self):
+        """
+        Loads previous user back into session.
+
+        :return: Instance of new user (which is the previous one) or None if
+            no previous user was set
+        """
+        try:
+            principal = self._request.session[
+                self.__class__.SESS_KEY + '/prev_user']
+        except KeyError:
+            return False
+        u = self.auth_provider.load_by_principal(principal)
+        self.init_from_user(u)
+        self._request.session.new_csrf_token()
+        return u
+
+    def logout(self):
+        """
+        Logout, resets metadata back to nobody.
+        """
+        self.auth_provider.logout(self._request, self.uid)
+        # Remove all session data
+        self._request.session.invalidate()
+        self.init_nobody()
+        self._request.session.new_csrf_token()
+
+    def __getattr__(self, name):
+        try:
+            return self._metadata[name]
+        except KeyError:
+            raise AttributeError("Attribute '{0}' not found".format(name))
+
+    @property
+    def groups(self):
+        return self._groups
+
+    def set_groups(self, groups):
+        # mlgg.debug("Setting groups: {}".format([str(x) for x in groups]))
+        # for x in traceback.extract_stack(limit=7):
+        #     mlgg.debug("{}".format(x))
+        self._groups = groups
+        self._group_names = [g.name for g in groups]
+
+    @property
+    def group_names(self):
+        return self._group_names
+
+    @property
+    def preferred_locale(self):
+        loc = self._metadata.get('preferred_locale', None)
+        if loc:
+            return babel.Locale(loc)
+        else:
+            return None
+
+
+class AuthProviderFactory(object):
+    @staticmethod
+    def factory(type_):
+        if type_ == 'sqlalchemy':
+            import pym.authmgr.manager
+            return pym.authmgr.manager
+        raise Exception("Unknown auth provider: '{0}'".format(type_))
+
+
+def get_current_user(request):
+    """
+    This method is used as a request method to reify a user object
+    to the request object as property ``user``.
+    """
+    #mlgg.debug("get user: {}".format(request.path))
+    principal = pyramid.security.unauthenticated_userid(request)
+    cusr = CurrentUser(request)
+    if principal is not None:
+        cusr.load_by_principal(principal)
+    return cusr

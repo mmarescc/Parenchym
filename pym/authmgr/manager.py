@@ -1,14 +1,14 @@
 import datetime
-import logging
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import and_
 
 from pym.models import DbSession
-from pym.authmgr.models import (User, Group, GroupMember)
-from .const import SYSTEM_UID
-import pym.security
 from pym.exc import AuthError
+import pym.security
 
+from .models import (User, Group, GroupMember)
+from .const import SYSTEM_UID
+from .events import BeforeUserLoggedIn, UserLoggedIn, UserLoggedOut
 
 PASSWORD_SCHEME = 'pbkdf2_sha512'
 
@@ -41,9 +41,7 @@ def _login(request, filter_, pwd, remote_addr):
         raise AuthError('User not found')
     # We have found the requested user, now broadcast this info so that
     # preparations can take place before we actually log him in.
-    request.registry.notify(
-        pym.security.BeforeUserLoggedIn(request, u)
-    )
+    request.registry.notify(BeforeUserLoggedIn(request, u))
     # Now log user in
     if not pym.security.pwd_context.verify(pwd, u.pwd):
         raise AuthError('Wrong credentials')
@@ -53,7 +51,7 @@ def _login(request, filter_, pwd, remote_addr):
     u.logout_time = None
     u.editor_id = SYSTEM_UID
     request.registry.notify(
-        pym.security.UserLoggedIn(request, u)
+        UserLoggedIn(request, u)
     )
     return u
 
@@ -69,9 +67,7 @@ def logout(request, uid):
     u.access_time = None
     u.logout_time = datetime.datetime.now()
     u.editor_id = SYSTEM_UID
-    request.registry.notify(
-        pym.security.UserLoggedOut(request, u)
-    )
+    request.registry.notify(UserLoggedOut(request, u))
     return u
 
 

@@ -9,17 +9,15 @@ from pyramid.threadlocal import get_current_request
 from pyramid.i18n import get_localizer, TranslationStringFactory
 import deform
 from pyramid_mailer import Mailer
+import pym.duh_view
+import pym.i18n
+import pym.models
+import pym.resmgr.models
+import pym.authmgr.manager
 
-from pym.rc import Rc
-from pym.authmgr import manager as authmgr_manager
-from . import security
-from . import models
-from . import i18n
-from . import duh_view
-from .resmgr.models import root_factory
+from .rc import Rc
 
 
-# noinspection PyUnusedLocal
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
@@ -72,18 +70,21 @@ def includeme(config):
     deform.Form.set_zpt_renderer(search_path, translator=translator)
 
     # Init resource root
-    config.set_root_factory(root_factory)
+    config.set_root_factory(resmgr.models.root_factory)
 
     # Init session
     session_factory = session_factory_from_settings(config.registry.settings)
     config.set_session_factory(session_factory)
 
+    from .authmgr import group_finder
+    from .authmgr.models import get_current_user
+
     # Init Auth and Authz
     auth_pol = SessionAuthenticationPolicy(
-        callback=security.group_finder
+        callback=group_finder
     )
     authz_pol = ACLAuthorizationPolicy()
-    config.add_request_method(security.get_user, 'user', reify=True)
+    config.add_request_method(get_current_user, 'user', reify=True)
     config.set_authentication_policy(auth_pol)
     config.set_authorization_policy(authz_pol)
     config.set_default_permission('view')
@@ -109,18 +110,23 @@ def includeme(config):
     models.init(config.registry.settings, 'db.pym.sa.')
 
     # Run scan() which also imports db models
-    config.scan('pym')
+    config.scan()
 
     # Static assets for this project
     config.add_static_view('static-pym', 'pym:static')
     config.add_static_view('static-deform', 'deform:static')
 
     init_auth(config.registry.settings['rc'])
+    init_views(config.registry.settings['rc'])
 
     # View predicates from pyramid_duh
     config.include(duh_view)
 
 
 def init_auth(rc):
-    authmgr_manager.PASSWORD_SCHEME = rc.g('auth.password_scheme',
-        authmgr_manager.PASSWORD_SCHEME).lower()
+    authmgr.manager.PASSWORD_SCHEME = rc.g('auth.password_scheme',
+        authmgr.manager.PASSWORD_SCHEME).lower()
+
+
+def init_views(rc):
+    pass

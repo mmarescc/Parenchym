@@ -1,5 +1,5 @@
-import pym.authmgr.manager as usrmgr
-from pym.authmgr.const import *
+from . import manager as usrmgr
+from .const import *
 
 
 SQL_VW_USER_BROWSE = """

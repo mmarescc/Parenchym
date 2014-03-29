@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from pyramid.view import view_config, view_defaults
 from pyramid.httpexceptions import HTTPFound
 from pyramid.security import (
@@ -8,17 +6,18 @@ from pyramid.security import (
     , NO_PERMISSION_REQUIRED
 )
 
-import pym.authmgr.models
 import pym.resmgr.models
 import pym.lib
 import pym.exc
+
+from ..models import Node
 
 
 _ = lambda s: s
 
 
 @view_defaults(
-    context=pym.authmgr.models.Node,
+    context=Node,
     permission='manage_auth'
 )
 class UsrMgrView(object):

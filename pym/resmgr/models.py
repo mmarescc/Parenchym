@@ -13,9 +13,7 @@ import zope.interface
 import pym.lib
 import pym.exc
 import pym.authmgr.models
-from pym.models import (
-    DbBase, DefaultMixin
-)
+from pym.models import (DbBase, DefaultMixin)
 
 
 class Root(pym.lib.BaseNode):
