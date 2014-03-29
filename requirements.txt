@@ -20,6 +20,7 @@ deform
 docutils
 enum34
 ezodf
+fs
 gunicorn
 hiredis
 ipdb
