@@ -1,7 +1,7 @@
 import pyramid.util
 import sqlalchemy as sa
 import sqlalchemy.event
-from sqlalchemy.orm import (relationship, backref)
+from sqlalchemy.orm import (relationship, backref, with_polymorphic)
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from pyramid.security import (
@@ -74,10 +74,10 @@ class ResourceNode(DbBase, DefaultMixin):
     __table_args__ = (
         {'schema': 'pym'}
     )
-    # __mapper_args__ = {
-    #     'polymorphic_on': 'kind',
-    #     'polymorphic_identity': 'resnode'
-    # }
+    __mapper_args__ = {
+        'polymorphic_on': 'kind',
+        'polymorphic_identity': 'res'
+    }
 
     # Root resource has parent_id NULL
     parent_id = sa.Column(
@@ -212,6 +212,14 @@ class ResourceNode(DbBase, DefaultMixin):
             return None
         return r
 
+    def __acl__(self):
+        """
+        Used for Pyramid's authorization policy.
+        """
+        acl = []
+        # TODO Load ACL
+        return acl
+
     def dumps(self, _indent=0):
         return "   " * _indent \
             + repr(self) + "\n" \
@@ -236,15 +244,6 @@ class ResourceNode(DbBase, DefaultMixin):
         Used for traversal.
         """
         return self.parent
-
-    @property
-    def __acl__(self):
-        """
-        Used for Pyramid's authorization policy.
-        """
-        acl = []
-        # TODO Load ACL
-        return acl
 
     @property
     def title(self):
