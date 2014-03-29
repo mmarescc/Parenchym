@@ -10,6 +10,7 @@ from sqlalchemy import (
     engine_from_config,
     Column,
     Integer,
+    Unicode,
     DateTime,
     ForeignKey,
     event,
@@ -153,6 +154,33 @@ class DefaultMixin(object):
             ),
             nullable=True,
             info={'colanderalchemy': {'title': _("EditorID")}}
+        )
+
+    dtime = Column(DateTime, nullable=True,
+            info={'colanderalchemy': {'title': _("Deletion Time")}})
+    """Timestamp, deletion time."""
+
+    # noinspection PyMethodParameters
+    @declared_attr
+    def deleter_id(cls):
+        """ID of user who tagged this this record as deleted."""
+        return Column(
+            Integer(),
+            ForeignKey(
+                "pym.user.id",
+                onupdate="CASCADE",
+                ondelete="RESTRICT"
+            ),
+            nullable=True,
+            info={'colanderalchemy': {'title': _("DeleterID")}}
+        )
+
+    # noinspection PyMethodParameters
+    @declared_attr
+    def deletion_reason(cls):
+        """Optional reason for deletion."""
+        return Column(Unicode(255), nullable=True,
+            info={'colanderalchemy': {'title': _("Deletion Reason")}}
         )
 
     def dump(self):
