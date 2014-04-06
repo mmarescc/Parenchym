@@ -403,10 +403,10 @@ class Permission(DbBase, DefaultMixin):
         IDs. Each element is another dict with keys ``id``, ``name``,
         ``parents``, and ``children``.
 
-        ``parents`` and ``children`` are lists of 2-tuples with [0]:=ID and
-        [1]:=name.
+        ``parents`` and ``children`` are lists of 2-tuples with [0] := ID and
+        [1] := name.
 
-        The list of parents comprise only parents in the direct path to the
+        The list of parents comprises only parents in the direct path to the
         topmost permission, where-as the list of children comprises the whole
         tree of child permissions. Given this tree::
 
