@@ -623,7 +623,7 @@ def get_vw_group_member_browse():
 
 class CurrentUser(object):
 
-    SESS_KEY = 'AuthMgr/CurrentUser'
+    SESS_KEY = 'Auth/CurrentUser'
 
     def __init__(self, request):
         self._request = request
@@ -759,10 +759,6 @@ class CurrentUser(object):
         # for x in traceback.extract_stack(limit=7):
         #     mlgg.debug("{}".format(x))
         self._groups = [(g.id, g.name) for g in groups]
-
-    @property
-    def group_names(self):
-        return self._group_names
 
     @property
     def preferred_locale(self):
