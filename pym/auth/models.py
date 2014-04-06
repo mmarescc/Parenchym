@@ -1,15 +1,18 @@
 import babel
 import pyramid.security
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import INET, HSTORE
+from sqlalchemy.dialects.postgresql import INET, HSTORE, ARRAY
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.associationproxy import association_proxy
-from pyramid.security import Allow
+from pyramid.security import Allow, ALL_PERMISSIONS
 import pyramid.i18n
+import zope.interface
 
 from pym.models import (
     DbBase, DefaultMixin
 )
+from pym.models.types import CleanUnicode
 import pym.lib
 import pym.exc
 
@@ -21,60 +24,81 @@ from .const import (NOBODY_UID, NOBODY_PRINCIPAL, NOBODY_EMAIL,
 _ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
 
 
-class Node(pym.lib.BaseNode):
-    __name__ = 'auth'
-    __acl__ = [
-        (Allow, 'r:wheel', 'admin')
-    ]
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'AuthManager'
-        self['user'] = NodeUser(self)
-        self['tenant'] = NodeTenant(self)
-        self['group'] = NodeGroup(self)
-        self['group_member'] = NodeGroupMember(self)
-        self['permission'] = NodePermission(self)
+class IAuthNode(zope.interface.Interface):
+    pass
 
 
-class NodeUser(pym.lib.BaseNode):
-    __name__ = 'user'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'Users'
+class IUsersNode(zope.interface.Interface):
+    pass
 
 
-class NodeTenant(pym.lib.BaseNode):
-    __name__ = 'tenant'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'Tenants'
+class ITenantsNode(zope.interface.Interface):
+    pass
 
 
-class NodeGroup(pym.lib.BaseNode):
-    __name__ = 'group'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'Groups'
+class IGroupsNode(zope.interface.Interface):
+    pass
 
 
-class NodeGroupMember(pym.lib.BaseNode):
-    __name__ = 'group_member'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'Group Members'
+class IGroupMembersNode(zope.interface.Interface):
+    pass
 
 
-class NodePermission(pym.lib.BaseNode):
-    __name__ = 'permission'
+class IPermissionsNode(zope.interface.Interface):
+    pass
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = 'Permissions'
+
+# class AuthNode(pym.lib.BaseNode):
+#     __name__ = 'auth'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = 'AuthManager'
+#         self['user'] = UserNode(self)
+#         self['tenant'] = TenantNode(self)
+#         self['group'] = GroupNode(self)
+#         self['group_member'] = GroupMemberNode(self)
+#         self['permission'] = PermissionNode(self)
+#
+#
+# class UserNode(pym.lib.BaseNode):
+#     __name__ = 'user'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = 'Users'
+#
+#
+# class TenantNode(pym.lib.BaseNode):
+#     __name__ = 'tenant'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = 'Tenants'
+#
+#
+# class GroupNode(pym.lib.BaseNode):
+#     __name__ = 'group'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = 'Groups'
+#
+#
+# class GroupMemberNode(pym.lib.BaseNode):
+#     __name__ = 'group_member'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = 'Group Members'
+#
+#
+# class PermissionNode(pym.lib.BaseNode):
+#     __name__ = 'permission'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = 'Permissions'
 
 
 class GroupMember(DbBase, DefaultMixin):
@@ -147,7 +171,7 @@ class User(DbBase, DefaultMixin):
     is_enabled = sa.Column(sa.Boolean, nullable=False, default=False,
         info={'colanderalchemy': {'title': _("Enabled?")}})
     """Tells whether or not a (human) admin has en/disabled this account."""
-    disable_reason = sa.Column(sa.Unicode(255),
+    disable_reason = sa.Column(CleanUnicode(255),
         info={'colanderalchemy': {'title': _("Disable Reason")}})
     """Reason why admin disabled this account."""
     is_blocked = sa.Column(sa.Boolean, nullable=False, default=False,
@@ -160,32 +184,32 @@ class User(DbBase, DefaultMixin):
     blocked_until = sa.Column(sa.DateTime,
         info={'colanderalchemy': {'title': _("Blocked Until")}})
     """Timestamp when block will automatically be released. NULL=never."""
-    block_reason = sa.Column(sa.Unicode(255),
+    block_reason = sa.Column(CleanUnicode(255),
         info={'colanderalchemy': {'title': _("Block Reason")}})
     """Reason why block was established."""
 
-    principal = sa.Column(sa.Unicode(255), nullable=False,
+    principal = sa.Column(CleanUnicode(255), nullable=False,
         info={'colanderalchemy': {'title': _("Principal")}})
     """Principal or user name."""
-    pwd = sa.Column(sa.Unicode(255),
+    pwd = sa.Column(CleanUnicode(255),
         info={'colanderalchemy': {'title': _("Password")}})
     """Password. NULL means blocked for login, e.g. for system accounts."""
     pwd_expires = sa.Column(sa.DateTime,
         info={'colanderalchemy': {'title': _("Pwd expires")}})
     """Timestamp when current pwd expires. NULL==never."""
-    identity_url = sa.Column(sa.Unicode(255), index=True, unique=True,
+    identity_url = sa.Column(CleanUnicode(255), index=True, unique=True,
         info={'colanderalchemy': {'title': _("Identity URL")}})
     """Used for login by OpenID."""
-    email = sa.Column(sa.Unicode(128), nullable=False,
+    email = sa.Column(CleanUnicode(128), nullable=False,
         info={'colanderalchemy': {'title': _("Email")}})
     """Email address. Always lower cased."""
-    first_name = sa.Column(sa.Unicode(64),
+    first_name = sa.Column(CleanUnicode(64),
         info={'colanderalchemy': {'title': _("First Name")}})
     """User's first name."""
-    last_name = sa.Column(sa.Unicode(64),
+    last_name = sa.Column(CleanUnicode(64),
         info={'colanderalchemy': {'title': _("Last Name")}})
     """User's last name."""
-    display_name = sa.Column(sa.Unicode(255), nullable=False,
+    display_name = sa.Column(CleanUnicode(255), nullable=False,
         info={'colanderalchemy': {'title': _("Display Name")}})
     """User is displayed like this. Usually 'first_name last_name' or
     'principal'."""
@@ -203,7 +227,7 @@ class User(DbBase, DefaultMixin):
         info={'colanderalchemy': {'title': _("Kick?")}})
     """Tells whether user's session is automatically terminated on next
     access."""
-    kick_reason = sa.Column(sa.Unicode(255),
+    kick_reason = sa.Column(CleanUnicode(255),
         info={'colanderalchemy': {'title': _("Kick Reason")}})
     """Display this message to kicked user."""
     logout_time = sa.Column(sa.DateTime,
@@ -247,7 +271,7 @@ class Tenant(DbBase, DefaultMixin):
         {'schema': 'pym'}
     )
 
-    name = sa.Column(sa.Unicode(255), nullable=False)
+    name = sa.Column(CleanUnicode(255), nullable=False)
     # Load description only if needed
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
     """Optional description."""
@@ -281,9 +305,9 @@ class Group(DbBase, DefaultMixin):
         nullable=True
     )
     """Optional reference to the tenant to which this group belongs."""
-    name = sa.Column(sa.Unicode(255), nullable=False)
+    name = sa.Column(CleanUnicode(255), nullable=False)
     """Name of the group. Must be unique within a tenant."""
-    kind = sa.Column(sa.Unicode(255), nullable=True)
+    kind = sa.Column(CleanUnicode(255), nullable=True)
     """An optional classifier to bundle groups together."""
     # Load description only if needed
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
@@ -307,7 +331,7 @@ class Permission(DbBase, DefaultMixin):
     """
     Permission.
 
-    A permission has a ``code_name``, a string that is used in code e.g. as::
+    A permission has a ``name``, a string that is used in code e.g. as::
 
         @view_defaults(permission='manage_auth')
 
@@ -322,7 +346,7 @@ class Permission(DbBase, DefaultMixin):
     """
     __tablename__ = "permission_tree"
     __table_args__ = (
-        sa.UniqueConstraint('code_name', name='permission_tree_ux'),
+        sa.UniqueConstraint('name', name='permission_tree_ux'),
         {'schema': 'pym'}
     )
     # Topmost permission has parent_id NULL
@@ -335,15 +359,141 @@ class Permission(DbBase, DefaultMixin):
         ),
         nullable=True
     )
-    code_name = sa.Column(sa.Unicode(64), nullable=False)
+    name = sa.Column(CleanUnicode(64), nullable=False)
     """The name of the permission as used in code."""
     # Load description only if needed
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
     """Optional description."""
 
+    children = relationship("Permission",
+        order_by=[name],
+        # cascade deletions
+        cascade="all, delete-orphan",
+        # Let the DB cascade deletions to children
+        passive_deletes=True,
+        lazy='select',
+        ##lazy='joined',
+        ##join_depth=1,
+
+        # many to one + adjacency list - remote_side
+        # is required to reference the 'remote'
+        # column in the join condition.
+        backref=sa.orm.backref("parent", remote_side="Permission.id"),
+
+        # children will be represented as a dictionary
+        # on the "name" attribute.
+        collection_class=attribute_mapped_collection('name'),
+    )
+    """Children of this permission."""
+
+    def add_child(self, perm):
+        """
+        Adds a permission to my children.
+
+        :param perm: Instance of a permission
+        """
+        perm.parent = self
+
+    @staticmethod
+    def load_all(sess):
+        """
+        Returns detailed info about permissions.
+
+        Returned is a dict which keys are the permission names as well as their
+        IDs. Each element is another dict with keys ``id``, ``name``,
+        ``parents``, and ``children``.
+
+        ``parents`` and ``children`` are lists of 2-tuples with [0]:=ID and
+        [1]:=name.
+
+        The list of parents comprise only parents in the direct path to the
+        topmost permission, where-as the list of children comprises the whole
+        tree of child permissions. Given this tree::
+
+            visit
+             |
+             +-- read
+             |    +-- write
+             +-- delete
+             |
+             +-- admin
+                  +-- admin_auth
+                  +-- admin_res
+
+        Element 'admin_auth' has as parents ['admin', 'visit'] and None children.
+
+        Element 'visit' has None parents and all other permissions as children
+        ['read', 'delete', 'admin', 'write', 'admin_auth', 'admin_res'].
+
+        E.g.::
+            {
+                8: {
+                    'children': None,
+                    'id': 8,
+                    'name': 'admin_res',
+                    'parents': [(2, 'visit'), (4, 'admin')]
+                },
+                'read': {
+                    'children': [(6, 'write')],
+                    'id': 3,
+                    'name': 'read',
+                    'parents': [(2, 'visit')]
+                },
+            }
+        """
+        tree = {}
+        # This query returns all permissions with their parents.
+        # Some permissions may have no parents.
+        q = sa.text("SELECT id, name, parents "
+            "FROM pym.vw_permissions_with_parents") \
+            .columns(id=sa.Integer(), name=sa.Unicode(),
+                parents=ARRAY(sa.Unicode, dimensions=2)
+            )
+        rs = sess.execute(q)
+        for r in rs:
+            pp = None
+            if r.parents:
+                pp = []
+                for p in r.parents:
+                    pp.append((int(p[0]), p[1]))
+            tree[r.name] = {
+                'id': r.id,
+                'name': r.name,
+                'parents': pp,
+                'children': None
+            }
+        # This query returns all permissions with their children.
+        # CAVEAT: Permissions without children are not listed!
+        q = sa.text("SELECT id, name, children "
+            "FROM pym.vw_permissions_with_children") \
+            .columns(id=sa.Integer(), name=sa.Unicode(),
+                children=ARRAY(sa.Unicode, dimensions=2)
+            )
+        rs = sess.execute(q)
+        # A single permission may have multiple rows with lists of children.
+        # Append them all.
+        for r in rs:
+            if tree[r.name]['children']:
+                tree[r.name]['children'] += [(int(x[0]), x[1])
+                    for x in r.children]
+            else:
+                tree[r.name]['children'] = [(int(x[0]), x[1])
+                    for x in r.children]
+        # Now remove duplicate children.
+        for name, v in tree.items():
+            if not v['children']:
+                continue
+            v['children'] = list(set(v['children']))
+        # Also index by ID
+        by_id = {}
+        for name, v in tree.items():
+            by_id[v['id']] = v
+        tree.update(by_id)
+        return tree
+
     def __repr__(self):
-        return "<{name}(id={id}, code_name='{cn}', parent_id='{p}'>".format(
-            id=self.id, cn=self.code_name, p=self.parent_id, name=self.__class__.__name__)
+        return "<{name}(id={id}, name='{n}', parent_id='{p}'>".format(
+            id=self.id, n=self.name, p=self.parent_id, name=self.__class__.__name__)
 
 
 class Ace(DbBase, DefaultMixin):
@@ -356,7 +506,7 @@ class Ace(DbBase, DefaultMixin):
     __tablename__ = "resource_acl"
     __table_args__ = (
         sa.UniqueConstraint('resource_id', 'group_id', 'user_id',
-            'permission_id', 'allow', name='resource_acl_ux'),
+            'permission_id', name='resource_acl_ux'),
         {'schema': 'pym'}
     )
 
@@ -387,7 +537,7 @@ class Ace(DbBase, DefaultMixin):
         nullable=True
     )
     """Reference to a user. Mandatory if group is not set."""
-    sortix = sa.Column(sa.Integer(), nullable=True, default=500)
+    sortix = sa.Column(sa.Integer(), nullable=True, server_default='5000')
     """Sort index; if equal, sort by ID.
 
     .. note::
@@ -412,6 +562,20 @@ class Ace(DbBase, DefaultMixin):
     descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
     """Optional description."""
 
+    def to_pyramid_ace(self, perms):
+        if self.user_id:
+            princ = 'u:' + str(self.user_id)
+        else:
+            princ = 'g:' + str(self.group_id)
+        p = perms[self.permission_id]
+        if p['name'] == '*':
+            perm = pyramid.security.ALL_PERMISSIONS
+        else:
+            perm = p['name']
+        allow_deny = pyramid.security.Allow if self.allow \
+            else pyramid.security.Deny
+        return allow_deny, princ, perm
+
     def __repr__(self):
         return "<{name}(id={id}, resource_node_id={r}, group_id={g}," \
                " user_id={u}, sortix={ix}, permission_id={p}, allow={allow}>".format(
@@ -432,13 +596,13 @@ class ActivityLog(DbBase):
     ctime = sa.Column(sa.DateTime,
         server_default=sa.func.current_timestamp())
     """Timestamp, creation time."""
-    principal = sa.Column(sa.Unicode(255))
-    method = sa.Column(sa.Unicode(255))
-    url = sa.Column(sa.Unicode(2048))
+    principal = sa.Column(CleanUnicode(255))
+    method = sa.Column(CleanUnicode(255))
+    url = sa.Column(CleanUnicode(2048))
     client_addr = sa.Column(INET)
     remote_addr = sa.Column(INET)
-    remote_user = sa.Column(sa.Unicode(255))
-    header_authorization = sa.Column(sa.Unicode(255))
+    remote_user = sa.Column(CleanUnicode(255))
+    header_authorization = sa.Column(CleanUnicode(255))
     headers = sa.Column(HSTORE)
 
 
@@ -465,7 +629,6 @@ class CurrentUser(object):
         self._request = request
         self._metadata = None
         self._groups = []
-        self._group_names = []
         self.uid = None
         self.principal = None
         self.init_nobody()
@@ -595,8 +758,7 @@ class CurrentUser(object):
         # mlgg.debug("Setting groups: {}".format([str(x) for x in groups]))
         # for x in traceback.extract_stack(limit=7):
         #     mlgg.debug("{}".format(x))
-        self._groups = groups
-        self._group_names = [g.name for g in groups]
+        self._groups = [(g.id, g.name) for g in groups]
 
     @property
     def group_names(self):

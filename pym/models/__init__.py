@@ -278,6 +278,8 @@ def create_all():
     """Creates bound data model."""
     DbBase.metadata.create_all(DbEngine)
 
+
+
 # ================================
 
 ### # ===[ FOR SQLITE ]=======

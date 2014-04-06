@@ -1,11 +1,8 @@
-import logging
 from pyramid.security import (
     NO_PERMISSION_REQUIRED
 )
 from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
-import sqlalchemy as sa
-import sqlalchemy.orm.exc
 
 import pym.models
 
@@ -16,7 +13,7 @@ import pym.auth.models
 # noinspection PyUnusedLocal
 @view_config(
     name='',
-    context=pym.res.models.Root,
+    context=pym.res.models.IRootNode,
     renderer='pym:templates/index.mako',
     permission=NO_PERMISSION_REQUIRED
 )
@@ -29,7 +26,7 @@ def index(context, request):
 # noinspection PyUnusedLocal
 @view_config(
     name='imprint',
-    context=pym.res.models.Root,
+    context=pym.res.models.IRootNode,
     renderer='pym:templates/imprint.mako',
     permission=NO_PERMISSION_REQUIRED
 )
@@ -40,7 +37,7 @@ def imprint(context, request):
 # noinspection PyUnusedLocal
 @view_config(
     name='main',
-    context=pym.res.models.Root,
+    context=pym.res.models.IRootNode,
     renderer='pym:templates/main.mako',
     permission='view'
 )

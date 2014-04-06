@@ -3,11 +3,14 @@ from .const import NOBODY_UID
 
 def group_finder(userid, request):
     """
-    Returns role_names of the currently logged in user.
+    Returns list of security principals of the currently logged in user.
 
-    Role names are prefixed with 'r:'.
-    Nobody has no role_names.
-    Param 'userid' must match principal of current user, else throws error
+    A principal starting with ``u:`` denotes the user, with ``g:`` denotes
+    a group. We use the IDs as identifier.
+
+    Nobody has no principals.
+
+    Param 'userid' must match principal of current user, else throws error.
     """
     usr = request.user
     # unauthenticated_userid becomes authenticated_userid if groupfinder
@@ -20,7 +23,11 @@ def group_finder(userid, request):
     # Not authenticated users have no groups
     if usr.uid == NOBODY_UID:
         return []
-    if not usr.group_names:
-        return []
-    group_names = ['g:' + g for g in usr.group_names]
-    return group_names
+    # Insert current user
+    gg = ['u:' + str(usr.uid)]
+    # That's all if she is not member of any group.
+    if not usr.groups:
+        return gg
+    # Append groups
+    gg += ['g:' + str(g[0]) for g in usr.groups]
+    return gg

@@ -56,6 +56,7 @@ class FsNode(pym.res.models.ResourceNode):
     fields are empty.
     """
 
+    # noinspection PyUnusedLocal
     @sa.orm.validates('mime_type')
     def validate_mime_type(self, key, mime_type):
         mime_type = mime_type.lower()

@@ -1,66 +1,80 @@
 import pyramid.util
 import sqlalchemy as sa
 import sqlalchemy.event
-from sqlalchemy.orm import (relationship, backref, with_polymorphic)
+from sqlalchemy.orm import (relationship, backref)
 from sqlalchemy.orm.collections import attribute_mapped_collection
-
-from pyramid.security import (
-    Allow, ALL_PERMISSIONS
-)
+from sqlalchemy.ext.hybrid import hybrid_property
+import pyramid.security
 #from pyramid.decorator import reify
 import zope.interface
 
 import pym.lib
 import pym.exc
-import pym.auth.models
-from pym.models import (DbBase, DefaultMixin)
+import pym.auth.models as pam
+from pym.models import (DbBase, DefaultMixin, DbSession)
+from pym.models.types import CleanUnicode
 
 
-class Root(pym.lib.BaseNode):
-    __acl__ = [
-        (Allow, 'g:wheel', ALL_PERMISSIONS),
-        (Allow, 'g:users', 'view'),
-    ]
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = "Root"
-        self['help'] = HelpNode(self)
-        self['__sys__'] = SystemNode(self)
+class IRootNode(zope.interface.Interface):
+    pass
 
 
-# ===[ HELP ]=======
+class IHelpNode(zope.interface.Interface):
+    pass
 
 
-class HelpNode(pym.lib.BaseNode):
-    __name__ = 'help'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = "Help"
-
-    def __getitem__(self, item):
-        return KeyError()
+class ISystemNode(zope.interface.Interface):
+    pass
 
 
-# ===[ SYSTEM ]======
+# class RootNode(pym.lib.BaseNode):
+#     __name__ = 'root'
+#     __acl__ = [
+#         (Allow, 'g:wheel', ALL_PERMISSIONS),
+#     ]
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = "Root"
+#         self['help'] = HelpNode(self)
+#         self['__sys__'] = ISystemNode(self)
+#
+#
+# # ===[ HELP ]=======
+#
+#
+# class HelpNode(pym.lib.BaseNode):
+#     __name__ = 'help'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = "Help"
+#
+#     def __getitem__(self, item):
+#         return KeyError()
+#
+#
+# # ===[ SYSTEM ]======
+#
+#
+# class SystemNode(pym.lib.BaseNode):
+#     __name__ = '__sys__'
+#
+#     def __init__(self, parent):
+#         super().__init__(parent)
+#         self._title = "System"
+#         self['auth'] = pam.AuthNode(self)
+#
+#
+# root_node = RootNode(None)
 
 
-class SystemNode(pym.lib.BaseNode):
-    __name__ = '__sys__'
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._title = "System"
-        self['authmgr'] = pym.auth.models.Node(self)
-
-
-root = Root(None)
-
-
-# noinspection PyUnusedLocal
 def root_factory(request):
-    return root
+    #return root_node
+    sess = DbSession()
+    n = ResourceNode.load_root(sess, 'root')
+    n.__user__ = request.user
+    return n
 
 
 # =========================
@@ -91,34 +105,40 @@ class ResourceNode(DbBase, DefaultMixin):
         ),
         nullable=True
     )
-    name = sa.Column(sa.Unicode(255), nullable=False)
+    _name = sa.Column('name', CleanUnicode(255), nullable=False)
     """
     Name of the resource.
     Will be used in traversal as ``__name__``. May be set even for root
-    resources, roots will be recognized when ``parent_id`` is None.
+    resources, roots are recognized by ``parent_id`` being None.
     """
-    f_title = sa.Column(sa.Unicode(255), nullable=True)
+    _title = sa.Column('title', CleanUnicode(255), nullable=True)
     """
     Title of the resource.
 
-    Will be the title of a page.
+    Used as the title of a page.
     """
-    f_short_title = sa.Column(sa.Unicode(255), nullable=True)
+    _short_title = sa.Column('short_title', CleanUnicode(255), nullable=True)
     """
     Short title of the resource.
 
-    Will be used in breadcrumbs and menus.
+    Used in breadcrumbs and menus.
     """
-    kind = sa.Column(sa.Unicode(255), nullable=False)
+    _slug = sa.Column('slug', CleanUnicode(255), nullable=True)
+    """
+    Slug of the resource.
+
+    Used in URLs.
+    """
+    kind = sa.Column(CleanUnicode(255), nullable=False)
     """
     Kind of resource. Default is 'res'. Discriminates resources in polymorphic
     tables.
     """
-    sortix = sa.Column(sa.Integer(), nullable=True, default=500)
+    sortix = sa.Column(sa.Integer(), nullable=True, server_default='5000')
     """
     Sort index; if equal, sort by name.
     """
-    iface = sa.Column(sa.Unicode(255), nullable=True)
+    iface = sa.Column(CleanUnicode(255), nullable=True)
     """
     Dotted Python name of the interface this node implements.
 
@@ -170,17 +190,150 @@ class ResourceNode(DbBase, DefaultMixin):
         Don't even try ``len(res.children)`` to count them!
     """
 
-    # TODO relationship to ACL
+    acl = relationship(pam.Ace,
+        order_by=[pam.Ace.allow, pam.Ace.sortix],
+        # cascade deletions
+        cascade="all, delete-orphan",
+        # Let the DB cascade deletions to children
+        passive_deletes=True,
+        # Typically, a resource is loaded during traversal. We need its full ACL
+        # then.
+        ##lazy='select',
+        lazy='joined',
+        ##join_depth=1,
+    )
 
-    def __init__(self, owner, name, kind, **kwargs):
-        self.owner = owner,
+    def __init__(self, owner_id, name, kind, **kwargs):
+        self.owner_id = owner_id,
         self.name = name
         self.kind = kind
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def _set_ace(self, sess, owner, allow, permission, user=None, group=None,
+            **kwargs):
+        if not user and not group:
+            raise pym.exc.PymError("Ace must reference either user or group.")
+        if user and group:
+            raise pym.exc.PymError("Ace cannot reference user and group "
+                                   "simultaneously.")
+        ace = pam.Ace()
+
+        if isinstance(owner, int):
+            ace.owner_id = owner
+        elif isinstance(owner, str):
+            o = sess.query(pam.User).filter(
+                pam.User.principal == owner
+            ).one()
+            ace.owner_id = o.id
+        else:
+            ace.owner_id = owner.id
+
+        if user:
+            if isinstance(user, int):
+                ace.user_id = user
+            elif isinstance(user, str):
+                u = sess.query(pam.User).filter(
+                    pam.User.principal == user
+                ).one()
+                ace.user_id = u.id
+            else:
+                ace.user_id = user.id
+
+        if group:
+            if isinstance(group, int):
+                ace.group_id = group
+            elif isinstance(group, str):
+                g = sess.query(pam.Group).filter(
+                    pam.Group.name == group
+                ).one()
+                ace.group_id = g.id
+            else:
+                ace.group_id = group.id
+
+        if permission:
+            if isinstance(permission, int):
+                ace.permission_id = permission
+            elif isinstance(permission, str):
+                p = sess.query(pam.Permission).filter(
+                    pam.Permission.name == permission
+                ).one()
+                ace.permission_id = p.id
+            else:
+                ace.permission_id = permission.id
+
+        ace.allow = allow
+
+        for k, v in kwargs.items():
+            setattr(ace, k, v)
+
+        self.acl.append(ace)
+
+    def allow(self, sess, owner, permission, user=None, group=None,
+            **kwargs):
+        """
+        Allows a permission on this resource to user or group.
+
+        Parameters ``owner``, ``permission``, ``user``, and ``group`` may be
+        given as integer (ID), as string (principal or name), or as objects.
+
+        Either ``user`` or ``group`` must be given, but not both.
+
+        :param sess: A DB session.
+        :param owner: Owner of this ACE.
+        :param permission: Permission to set.
+        :param user: Set permission for this user.
+        :param group: Set permission for this group.
+        :param kwargs: Other parameters suitable for :class:`pym.auth.models.Ace`.
+        """
+        self._set_ace(sess=sess, owner=owner, allow=True, permission=permission,
+            user=user, group=group, **kwargs)
+
+    def deny(self, sess, owner, permission, user=None, group=None,
+            **kwargs):
+        """
+        Denies a permission on this resource from user or group.
+
+        Parameters ``owner``, ``permission``, ``user``, and ``group`` may be
+        given as integer (ID), as string (principal or name), or as objects.
+
+        Either ``user`` or ``group`` must be given, but not both.
+
+        :param sess: A DB session.
+        :param owner: Owner of this ACE.
+        :param permission: Permission to set.
+        :param user: Set permission for this user.
+        :param group: Set permission for this group.
+        :param kwargs: Other parameters suitable for :class:`pym.auth.models.Ace`.
+        """
+        self._set_ace(sess=sess, owner=owner, allow=False, permission=permission,
+            user=user, group=group, **kwargs)
+
+    def add_child(self, sess, owner, kind, name, **kwargs):
+        if isinstance(owner, int):
+            owner_id = owner
+        elif isinstance(owner, str):
+            o = sess.query(pam.User).filter(
+                pam.User.principal == owner
+            ).one()
+            owner_id = o.id
+        else:
+            owner_id = owner.id
+        n = ResourceNode(owner_id=owner_id, kind=kind, name=name, **kwargs)
+        n.parent = self
+        return n
+
     @classmethod
     def create_root(cls, sess, owner, name, kind, **kwargs):
+        if isinstance(owner, int):
+            owner_id = owner
+        elif isinstance(owner, str):
+            o = sess.query(pam.User).filter(
+                pam.User.principal == owner
+            ).one()
+            owner_id = o.id
+        else:
+            owner_id = owner.id
         r = cls.load_root(sess, name)
         if r:
             if r.kind == kind:
@@ -189,7 +342,7 @@ class ResourceNode(DbBase, DefaultMixin):
                 raise ValueError("Root node '{}' already exists, but kind"
                     " differs: is='{}' wanted='{}'".format(
                     name, r.kind, kind))
-        r = cls(owner, name, kind, **kwargs)
+        r = cls(owner_id, name, kind, **kwargs)
         sess.add(r)
         return r
 
@@ -213,18 +366,57 @@ class ResourceNode(DbBase, DefaultMixin):
             return None
         return r
 
-    def __acl__(self):
-        """
-        Used for Pyramid's authorization policy.
-        """
-        acl = []
-        # TODO Load ACL
-        return acl
+    def is_root(self):
+        return self.parent_id is None
 
     def dumps(self, _indent=0):
         return "   " * _indent \
             + repr(self) + "\n" \
             + "".join([c.dumps(_indent + 1) for c in self.children.values()])
+
+    def __acl__(self):
+        """
+        ACL for Pyramid's authorization policy.
+        """
+        sess = sa.inspect(self).session
+        acl = []
+        perms = pam.Permission.load_all(sess)
+        # Convert self.acl into Pyramid's ACL
+        for ace in self.acl:
+            pyr_ace = ace.to_pyramid_ace(perms)
+            acl.append(pyr_ace)
+            # If allow, allow all parents
+            if ace.allow:
+                if perms[ace.permission_id]['parents']:
+                    for p in perms[ace.permission_id]['parents']:
+                        pyr_ace2 = (pyr_ace[0], pyr_ace[1], p['name'])
+                        acl.append(pyr_ace2)
+            # If deny, deny all children
+            else:
+                for ch in perms[ace.permission_id]['children']:
+                    pyr_ace2 = (pyr_ace[0], pyr_ace[1], ch['name'])
+                    acl.append(pyr_ace2)
+        return acl
+
+    @classmethod
+    def load_child(cls, sess, id_or_name, parent_id=None):
+        if isinstance(id_or_name, int):
+            fil = [cls.id == id_or_name]
+        else:
+            fil = [
+                cls.parent_id == parent_id,
+                cls.name == id_or_name,
+            ]
+        return sess.query(cls).filter(sa.and_(*fil)).one()
+
+    def __getitem__(self, item):
+        cls = self.__class__
+        sess = sa.inspect(self).session
+        try:
+            child = cls.load_child(sess, item, self.id)
+        except sa.orm.exc.NoResultFound as exc:
+            raise KeyError("Child resource not found: '{}'".format(item))
+        return child
 
     def __repr__(self):
         return "<{cls}(id={0}, parent_id='{1}', name='{2}', kind='{3}')>".format(
@@ -244,27 +436,77 @@ class ResourceNode(DbBase, DefaultMixin):
         """
         Used for traversal.
         """
+        if self.parent_id is None:
+            return None
         return self.parent
 
-    @property
+    @hybrid_property
+    def name(self):
+        """
+        Name of this node.
+        """
+        return self._name
+
+    @name.setter
+    def name(self, v):
+        self._name = v
+
+    @hybrid_property
     def title(self):
         """
         Title of this node.
 
         Uses ``name`` if not set.
         """
-        return self.f_title if self.f_title else self.name
+        return self._title if self._title else self.name
 
-    @property
+    @title.setter
+    def title(self, v):
+        self._title = v
+
+    @hybrid_property
     def short_title(self):
         """
         Short title of this node.
 
         Uses ``title`` if not set.
         """
-        return self.f_short_title if self.f_short_title else self.title
+        return self._short_title if self._short_title else self.title
+
+    @short_title.setter
+    def short_title(self, v):
+        self._short_title = v
+
+    @hybrid_property
+    def slug(self):
+        """
+        Slug of this node.
+
+        Slugs are used in URLs.
+
+        Uses ``name`` if not set.
+        """
+        return self._slug if self._slug else self.name
+
+    @slug.setter
+    def slug(self, v):
+        self._slug = v
+
+    @property
+    def root(self):
+        n = self
+        while n.parent:
+            n = n.parent
+        return n
+
+    @property
+    def user(self):
+        if self.parent_id is None:
+            return self.__user__
+        return self.root.__user__
 
 
+# When we load a node from DB attach the stored interface to the instance.
 # noinspection PyUnusedLocal
 def resource_node_load_listener(target, context):
     if target.iface:

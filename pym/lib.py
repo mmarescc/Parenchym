@@ -10,6 +10,7 @@ import uuid
 import subprocess
 import json
 import decimal
+import slugify as python_slugify
 
 import magic
 import colander
@@ -36,6 +37,8 @@ Invalid characters for a filename in OS filesystem, e.g. ext3.
 """
 
 RE_BLANKS = re.compile('\s+')
+RE_LEADING_BLANKS = re.compile('^\s+')
+RE_TRAILING_BLANKS = re.compile('\s+$')
 
 
 _CMD_SASSC = os.path.abspath(os.path.join(os.path.dirname(__file__),
@@ -89,6 +92,67 @@ def _represent_ordereddict(self, data):
     return self.represent_mapping('tag:yaml.org,2002:map', data.items())
 
 yaml.add_representer(collections.OrderedDict, _represent_ordereddict)
+
+
+def trim_blanks(s):
+    """
+    Removes leading and trailing whitespace from string.
+    """
+    s = RE_LEADING_BLANKS.sub('', s)
+    s = RE_TRAILING_BLANKS.sub('', s)
+    return s
+
+
+def is_string_clean(s):
+    """
+    Checks whether string has leading/trailing whitespace or illegal chars.
+    """
+    if RE_LEADING_BLANKS.search(s):
+        return False
+    if RE_TRAILING_BLANKS.search(s):
+        return False
+    if RE_INVALID_FS_CHARS.search(s):
+        return False
+    return True
+
+
+def clean_string(s):
+    """
+    Cleans string by removing leading and trailing whitespace, illegal chars and
+    folding consecutive whitespace to a single space char.
+    """
+    s = trim_blanks(s)
+    s = RE_BLANKS.sub(' ', s)
+    s = RE_INVALID_FS_CHARS.sub('', s)
+    return s
+
+
+def slugify(s, force_ascii=False, **kw):
+    """
+    Converts string into a 'slug' for use in URLs.
+
+    Since nowadays we can use UTF-8 characters in URLs, we keep those intact,
+    and just replace white space with a dash, except when you force ASCII by
+    setting that parameter.
+
+    If you ``force_ascii``, we use
+    `python-slugify <https://github.com/un33k/python-slugify>`_ to convert the
+    string. Additional keyword arguments are passed.
+
+    We do not encode unicode in UTF-8 here, since most web frameworks do that
+    transparently themselves.
+
+    :param s: The string to slugify.
+    :param force_ascii: If False (default) we allow unicode chars.
+    :param **kw: Additional keyword arguments are passed to python-slugify.
+    :return: The slug, still a unicode string but maybe just containing ASCII
+        chars.
+    """
+    s = clean_string(s)
+    s = RE_BLANKS.sub('-', s)
+    if force_ascii:
+        s = python_slugify.slugify(s, **kw)
+    return s
 
 
 class FileUploadTmpStoreFileSystem(object):

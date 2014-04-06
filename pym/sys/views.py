@@ -10,7 +10,7 @@ L = logging.getLogger('Pym')
 
 @view_config(
     name='',
-    context=pym.res.models.SystemNode,
+    context=pym.res.models.ISystemNode,
     renderer='pym:sys/templates/index.mako',
     permission='admin'
 )

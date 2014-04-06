@@ -1,5 +1,6 @@
 from . import manager as usrmgr
 from .const import *
+from .models import Permission
 
 
 SQL_VW_USER_BROWSE = """
@@ -100,12 +101,114 @@ CREATE OR REPLACE VIEW pym.vw_group_member_browse AS
     LEFT JOIN pym.tenant            ON gr.tenant_id       = tenant.id
 );"""
 
+# -- List all permissions with their respective parent path.
+# -- Root permissions (i.e. without parent) are also listed.
+# id    name       parents
+# 1      *         NULL
+# 2    visit       NULL
+# 3    read        {{2,visit}}
+# 4    admin       {{2,visit}}
+# 5    delete      {{2,visit}}
+# 6    write       {{2,visit},{3,read}}
+# 7    admin_auth  {{2,visit},{4,admin}}
+# 8    admin_res   {{2,visit},{4,admin}}
+SQL_VW_PERMISSIONS_WITH_PARENTS = """
+CREATE OR REPLACE VIEW pym.vw_permissions_with_parents AS
+(
+    WITH RECURSIVE other AS
+    (
+      -- non-recursive term
+      SELECT
+        ARRAY [ARRAY [p.id :: TEXT, p.name :: TEXT]] AS path,
+        NULL :: TEXT []                              AS parents,
+        p.id,
+        p.parent_id,
+        p.name
+      FROM pym.permission_tree p
+      WHERE p.parent_id IS NULL
+
+      UNION ALL
+
+      -- recursive term
+      SELECT
+        other.path || ARRAY [p.id :: TEXT, p.name :: TEXT] AS path,
+        path [0 : array_upper(path, 1) + 1]                 AS parents,
+        p.id,
+        p.parent_id,
+        p.name
+      FROM
+        pym.permission_tree AS p
+        JOIN other AS other
+          ON (p.parent_id = other.id)
+    )
+    SELECT
+      id,
+      name,
+      parents
+    FROM other
+    ORDER BY parents NULLS FIRST
+)
+"""
+
+# -- List all permissions with their children.
+# -- CAVEAT: Permissions without children do not appear in result!
+# id    name    children
+# 4    admin    {{7,admin_auth}}
+# 4    admin    {{8,admin_res}}
+# 3    read     {{6,write}}
+# 2    visit    {{3,read}}
+# 2    visit    {{3,read},{6,write}}
+# 2    visit    {{4,admin}}
+# 2    visit    {{4,admin},{7,admin_auth}}
+# 2    visit    {{4,admin},{8,admin_res}}
+# 2    visit    {{5,delete}}
+SQL_VW_PERMISSIONS_WITH_CHILDREN = """
+CREATE OR REPLACE VIEW pym.vw_permissions_with_children AS
+(
+    WITH RECURSIVE other AS
+    (
+      -- non-recursive term
+      SELECT
+        ARRAY [ARRAY [p.id :: TEXT, p.name :: TEXT]] AS path,
+        NULL :: TEXT []                              AS children,
+        p.id,
+        p.parent_id,
+        name
+      FROM pym.permission_tree p
+      WHERE p.parent_id IS NOT NULL
+
+      UNION ALL
+
+      -- recursive term
+      SELECT
+        ARRAY [p.id :: TEXT, p.name :: TEXT] || other.path AS path,
+        path [1 : array_upper(path, 1)]                     AS children,
+        p.id,
+        p.parent_id,
+        p.name
+      FROM
+        pym.permission_tree AS p
+        JOIN other AS other
+          ON (p.id = other.parent_id)
+    )
+    SELECT
+      id,
+      name,
+      children
+    FROM other
+    WHERE array_length(children, 1) > 0
+    ORDER BY name, children
+)
+"""
+
 
 def create_views(sess):
     sess.execute(SQL_VW_USER_BROWSE)
     sess.execute(SQL_VW_TENANT_BROWSE)
     sess.execute(SQL_VW_GROUP_BROWSE)
     sess.execute(SQL_VW_GROUP_MEMBER_BROWSE)
+    sess.execute(SQL_VW_PERMISSIONS_WITH_PARENTS)
+    sess.execute(SQL_VW_PERMISSIONS_WITH_CHILDREN)
 
 
 def setup_users(sess, root_pwd):
@@ -233,3 +336,78 @@ def setup_users(sess, root_pwd):
     # Regular groups have ID > 100
     sess.execute('ALTER SEQUENCE pym.group_id_seq RESTART WITH 101')
     sess.flush()
+
+
+def setup_permissions(sess):
+    """
+    Sets up permission tree as follows:
+
+        visit:                  visit a node
+         |
+         +-- read:              read an object
+         |    +-- write:        write an object
+         +-- delete:            delete an object
+         |
+         +-- admin
+              +-- admin_auth:   admin users, groups, permissions, ACL
+              +-- admin_res:    admin resources
+    """
+    p_all = Permission()
+    p_all.owner_id = SYSTEM_UID
+    p_all.name = '*'
+    p_all.descr = "All permissions."
+
+    p_visit = Permission()
+    p_visit.owner_id = SYSTEM_UID
+    p_visit.name = 'visit'
+    p_visit.descr = "Permission to visit this node. This is weaker than 'read'."
+
+    p_read = Permission()
+    p_read.owner_id = SYSTEM_UID
+    p_read.name = 'read'
+    p_read.descr = "Permission to read this resource."
+
+    p_write = Permission()
+    p_write.owner_id = SYSTEM_UID
+    p_write.name = 'write'
+    p_write.descr = "Permission to write this resource."
+
+    p_delete = Permission()
+    p_delete.owner_id = SYSTEM_UID
+    p_delete.name = 'delete'
+    p_delete.descr = "Permission to delete this resource."
+
+    p_admin = Permission()
+    p_admin.owner_id = SYSTEM_UID
+    p_admin.name = 'admin'
+    p_admin.descr = "Permission to administer in general."
+
+    p_admin_auth = Permission()
+    p_admin_auth.owner_id = SYSTEM_UID
+    p_admin_auth.name = 'admin_auth'
+    p_admin_auth.descr = "Permission to administer authentication and "\
+        "authorization, like users, groups, permissions and ACL on resources."
+
+    p_admin_res = Permission()
+    p_admin_res.owner_id = SYSTEM_UID
+    p_admin_res.name = 'admin_res'
+    p_admin_res.descr = "Permission to administer resources."
+
+    p_visit.add_child(p_read)
+    p_visit.add_child(p_delete)
+    p_visit.add_child(p_admin)
+
+    p_read.add_child(p_write)
+
+    p_admin.add_child(p_admin_auth)
+    p_admin.add_child(p_admin_res)
+
+    sess.add(p_all)
+    sess.add(p_visit)
+
+
+def setup(sess, root_pwd, schema_only=False):
+    create_views(sess)
+    if not schema_only:
+        setup_users(sess, root_pwd)
+        setup_permissions(sess)

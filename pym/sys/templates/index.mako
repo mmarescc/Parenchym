@@ -9,6 +9,6 @@ ${parent.scripts()}
 
 <div class="outer-gutter">
 <ul>
-    <li><a href="${request.resource_url(request.context['authmgr'])}">Authentication Manager</a></li>
+    <li><a href="${request.resource_url(request.context['auth'])}">Authentication Manager</a></li>
 </ul>
 </div>

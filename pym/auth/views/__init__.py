@@ -10,14 +10,14 @@ import pym.res.models
 import pym.lib
 import pym.exc
 
-from ..models import Node
+from ..models import IAuthNode
 
 
 _ = lambda s: s
 
 
 @view_defaults(
-    context=Node,
+    context=IAuthNode,
     permission='manage_auth'
 )
 class UsrMgrView(object):
@@ -35,7 +35,7 @@ class UsrMgrView(object):
 
 
 @view_defaults(
-    context=pym.res.models.Root,
+    context=pym.res.models.IRootNode,
     permission=NO_PERMISSION_REQUIRED
 )
 class LogInOutView(object):

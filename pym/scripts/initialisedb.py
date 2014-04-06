@@ -14,6 +14,7 @@ import pym.models
 import pym.cli
 import pym.lib
 import pym.auth.setup
+import pym.res.setup
 
 import pym.cli
 import pym.lib
@@ -25,17 +26,22 @@ class InitialiseDbCli(pym.cli.Cli):
         super().__init__()
 
     def run(self):
+        root_pwd = self.rc.g('auth.user_root.pwd')
         self._config.scan('pym')
         sess = self._sess
         with transaction.manager:
             self._create_schema(sess)
             pym.models.create_all()
-            self._create_views(sess)
-            if not self.args.schema_only:
-                self._setup_users(sess)
+
+            pym.auth.setup.setup(sess, root_pwd,
+                schema_only=self.args.schema_only)
+            pym.res.setup.setup(sess,
+                schema_only=self.args.schema_only)
+
             if self.args.alembic_config:
                 alembic_cfg = Config(self.args.alembic_config)
                 command.stamp(alembic_cfg, "head")
+
             mark_changed(sess)
 
     @staticmethod
@@ -43,14 +49,6 @@ class InitialiseDbCli(pym.cli.Cli):
         sess.execute('CREATE SCHEMA IF NOT EXISTS pym')
         mark_changed(sess)
         transaction.commit()
-
-    @staticmethod
-    def _create_views(sess):
-        pym.auth.setup.create_views(sess)
-
-    def _setup_users(self, sess):
-        root_pwd = self.rc.g('auth.user_root.pwd')
-        pym.auth.setup.setup_users(sess, root_pwd=root_pwd)
 
 
 def parse_args(app_class):
