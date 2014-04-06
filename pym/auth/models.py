@@ -15,6 +15,7 @@ from pym.models import (
 from pym.models.types import CleanUnicode
 import pym.lib
 import pym.exc
+from pym.cache import region_auth_long_term
 
 from .events import UserAuthError
 from .const import (NOBODY_UID, NOBODY_PRINCIPAL, NOBODY_EMAIL,
@@ -241,12 +242,18 @@ class User(DbBase, DefaultMixin):
 
     group_memberships = relationship('GroupMember',
         foreign_keys='GroupMember.member_user_id')
-    """List of our direct group memberships. Call :meth:`all_group_memberships`
-    to get all."""
+    """List of our direct group memberships."""
     groups = association_proxy('group_memberships', 'group')
         #info={'colanderalchemy': {'title': _("Groups")}})
-    """List of groups we are directly member of. Call :meth:`all_groups` to
+    """List of groups we are directly member of. Call :meth:`load_all_groups` to
     get all."""
+
+    def load_all_groups(self):
+        def creator():
+            # TODO Load nested groups
+            return [(x.id, x.name) for x in self.groups]
+        key = 'auth:groups_for_user:{}'.format(self.id)
+        return region_auth_long_term.get_or_create(key, creator)
 
     def __repr__(self):
         return "<{name}(id={id}, principal='{p}', email='{e}'>".format(
@@ -394,7 +401,7 @@ class Permission(DbBase, DefaultMixin):
         """
         perm.parent = self
 
-    @staticmethod
+    @region_auth_long_term.cache_on_arguments()
     def load_all(sess):
         """
         Returns detailed info about permissions.
@@ -623,7 +630,7 @@ def get_vw_group_member_browse():
 
 class CurrentUser(object):
 
-    SESS_KEY = 'Auth/CurrentUser'
+    SESS_KEY = 'auth:current_user'
 
     def __init__(self, request):
         self._request = request
@@ -646,7 +653,7 @@ class CurrentUser(object):
             email=NOBODY_EMAIL,
             display_name=NOBODY_DISPLAY_NAME
         )
-        self.set_groups([])
+        self.groups = []
 
     def init_from_user(self, u):
         """
@@ -654,7 +661,7 @@ class CurrentUser(object):
         """
         self.uid = u.id
         self.principal = u.principal
-        self.set_groups(u.groups)
+        self.groups = u.load_all_groups()
         self._metadata['email'] = u.email
         self._metadata['first_name'] = u.first_name
         self._metadata['last_name'] = u.last_name
@@ -754,11 +761,12 @@ class CurrentUser(object):
     def groups(self):
         return self._groups
 
-    def set_groups(self, groups):
+    @groups.setter
+    def groups(self, v):
         # mlgg.debug("Setting groups: {}".format([str(x) for x in groups]))
         # for x in traceback.extract_stack(limit=7):
         #     mlgg.debug("{}".format(x))
-        self._groups = [(g.id, g.name) for g in groups]
+        self._groups = v
 
     @property
     def preferred_locale(self):

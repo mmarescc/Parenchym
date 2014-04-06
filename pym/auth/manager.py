@@ -5,6 +5,7 @@ from sqlalchemy.sql import and_
 from pym.models import DbSession
 from pym.exc import AuthError
 import pym.security
+from pym.cache import FromCache
 
 from .models import (User, Group, GroupMember)
 from .const import SYSTEM_UID
@@ -19,8 +20,12 @@ def load_by_principal(principal):
     """
     sess = DbSession()
     try:
-        p = sess.query(User).filter(
-            User.principal == principal).one()
+        p = sess.query(User).options(
+            FromCache("auth_short_term",
+                cache_key='auth:user:{}'.format(principal))
+        ).filter(
+            User.principal == principal
+        ).one()
     except NoResultFound:
         raise AuthError("User not found by principal '{}'".format(principal))
     return p

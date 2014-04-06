@@ -19,6 +19,13 @@ debug: false
 
 upload_tmp_dir: "{here}/var/tmp_uploads"
 
+# ---[ Redis ]-------
+
+#redis.url: 'redis:///var/run/redis/redis.sock'
+redis.url: 'redis://localhost:6379'
+redis.db: 0
+redis.max_connections: ~
+
 
 # ---[ Encryption ]-------
 

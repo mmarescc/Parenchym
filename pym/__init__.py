@@ -108,7 +108,7 @@ def includeme(config):
     #config.include('pyramid_chameleon')
 
     # Init DB
-    models.init(config.registry.settings, 'db.pym.sa.')
+    models.init(config.registry.settings, 'db.pym.sa.', invalidate_caches=True)
 
     # Run scan() which also imports db models
     config.scan('pym')
@@ -121,6 +121,8 @@ def includeme(config):
 
     # View predicates from pyramid_duh
     config.include(duh_view)
+    # Redis
+    config.include('pyramid_redis')
 
 
 def init_auth(rc):

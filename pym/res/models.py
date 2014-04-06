@@ -10,6 +10,7 @@ import zope.interface
 
 import pym.lib
 import pym.exc
+import pym.cache
 import pym.auth.models as pam
 from pym.models import (DbBase, DefaultMixin, DbSession)
 from pym.models.types import CleanUnicode
@@ -198,8 +199,8 @@ class ResourceNode(DbBase, DefaultMixin):
         passive_deletes=True,
         # Typically, a resource is loaded during traversal. We need its full ACL
         # then.
-        ##lazy='select',
-        lazy='joined',
+        lazy='select',
+        ##lazy='joined',
         ##join_depth=1,
     )
 
@@ -359,7 +360,18 @@ class ResourceNode(DbBase, DefaultMixin):
         :return: Instance of the root node or, None if not found
         """
         try:
-            r = sess.query(cls).filter(
+            r = sess.query(
+                cls
+            ).options(
+                pym.cache.FromCache("auth_long_term",
+                cache_key='resource:{}:None'.format(name))
+            ).options(
+                pym.cache.RelationshipCache(cls.children, "auth_long_term",
+                cache_key='resource:{}:None:children'.format(name))
+            ).options(
+                pym.cache.RelationshipCache(cls.acl, "auth_long_term")#,
+                #cache_key='resource:{}:None:acl'.format(name))
+            ).filter(
                 sa.and_(cls.parent_id == None, cls.name == name)
             ).one()
         except sa.orm.exc.NoResultFound:
@@ -407,7 +419,27 @@ class ResourceNode(DbBase, DefaultMixin):
                 cls.parent_id == parent_id,
                 cls.name == id_or_name,
             ]
-        return sess.query(cls).filter(sa.and_(*fil)).one()
+        return sess.query(
+            cls
+        ).options(
+            pym.cache.FromCache("auth_long_term",
+                cache_key='resource:{}:{}'.format(
+                    id_or_name, parent_id))
+        ).options(
+            pym.cache.RelationshipCache(cls.children, "auth_long_term",
+                cache_key='resource:{}:{}:children'.format(
+                    id_or_name, parent_id))
+        ).options(
+            pym.cache.RelationshipCache(cls.acl, "auth_long_term",
+                cache_key='resource:{}:{}:acl'.format(
+                    id_or_name, parent_id))
+        ).options(
+            pym.cache.RelationshipCache(cls.parent, "auth_long_term")#,
+                #cache_key='presource:{}:{}:parent'.format(
+                #    id_or_name, parent_id))
+        ).filter(
+            sa.and_(*fil)
+        ).one()
 
     def __getitem__(self, item):
         cls = self.__class__

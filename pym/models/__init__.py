@@ -40,6 +40,7 @@ import pyramid.i18n
 import pym.exc
 import pym.lib
 import pym.i18n
+import pym.cache
 
 
 _ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
@@ -93,7 +94,14 @@ class LoginSchema(colander.MappingSchema):
 
 # ===[ DB HELPERS ]=======
 
-DbSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
+cache_regions = {}
+
+DbSession = scoped_session(
+    sessionmaker(
+        query_cls=pym.cache.query_callable(cache_regions),
+        extension=ZopeTransactionExtension()
+    )
+)
 """
 Factory for DB session.
 """
@@ -220,16 +228,19 @@ def receive_before_update(mapper, connection, target):
 #     retval=True)
 # def before_cursor_execute(conn, cursor, statement,
 #                 parameters, context, executemany):
-#     sql = cursor.mogrify(statement, parameters)
+#     sql = cursor.mogrify(statement, parameters).decode('UTF-8')
 #     print("\n", 'v' * 79)
 #     print(sqlparse.format(sql, reindent=True, keyword_case='upper'))
+#     print('-' * 79, "\n")
+#     from traceback import print_stack
+#     print_stack()
 #     print('^' * 79, "\n")
 #     return statement, parameters
 
 
 # ===[ IMPORTABLE SETUP FUNCS ]=======
 
-def init(settings, prefix):
+def init(settings, prefix, invalidate_caches=False):
     """
     Initializes scoped SQLAlchemy by rc settings.
 
@@ -249,6 +260,14 @@ def init(settings, prefix):
     )
     DbSession.configure(bind=DbEngine)
     DbBase.metadata.bind = DbEngine
+
+    add_cache_region('default', pym.cache.region_default)
+    add_cache_region('auth_short_term', pym.cache.region_auth_short_term)
+    add_cache_region('auth_long_term', pym.cache.region_auth_long_term)
+    if invalidate_caches:
+        pym.cache.region_default.invalidate()
+        pym.cache.region_auth_short_term.invalidate()
+        pym.cache.region_auth_long_term.invalidate()
 
 
 def init_unscoped(settings, prefix):
@@ -279,6 +298,8 @@ def create_all():
     DbBase.metadata.create_all(DbEngine)
 
 
+def add_cache_region(name, region):
+    cache_regions[name] = region
 
 # ================================
 
