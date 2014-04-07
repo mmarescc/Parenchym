@@ -1,4 +1,4 @@
-from . import manager as usrmgr
+from . import manager as authmgr
 from .const import *
 from .models import Permission
 
@@ -213,74 +213,80 @@ def create_views(sess):
 
 def setup_users(sess, root_pwd):
     # 1// Create user system
-    p_system = usrmgr.create_user(dict(
+    u_system = authmgr.create_user(
+        sess,
+        owner=SYSTEM_UID,
         id=SYSTEM_UID,
+        is_enabled=False,
         principal='system',
+        pwd=None,
         email='system@localhost',
         first_name='system',
         display_name='System',
-        owner_id=SYSTEM_UID,
         # Groups do not exist yet. Do not auto-create them
         groups=False
-    ))
+    )
 
     # 2// Create groups
     # This group should not have members.
     # Not-authenticated users are automatically member of 'everyone'
-    usrmgr.create_group(dict(
+    authmgr.create_group(
+        sess,
+        owner=SYSTEM_UID,
         id=EVERYONE_RID,
         name='everyone',
         descr='Everyone (incl. unauthenticated users)',
-        location_name='System',
-        location_type='System',
-        owner_id=SYSTEM_UID,
-    ))
-    usrmgr.create_group(dict(
+        kind='system'
+    )
+    authmgr.create_group(
+        sess,
+        owner=SYSTEM_UID,
         id=SYSTEM_RID,
         name='system',
-        location_name='System',
-        location_type='System',
-        owner_id=SYSTEM_UID
-    ))
-    r_wheel = usrmgr.create_group(dict(
+    )
+    g_wheel = authmgr.create_group(
+        sess,
+        owner=SYSTEM_UID,
         id=WHEEL_RID,
         name='wheel',
         descr='Site Admins',
-        location_name='System',
-        location_type='System',
-        owner_id=SYSTEM_UID
-    ))
-    r_users = usrmgr.create_group(dict(
+        kind='system'
+    )
+    g_users = authmgr.create_group(
+        sess,
+        owner=SYSTEM_UID,
         id=USERS_RID,
         name='users',
         descr='Authenticated Users',
-        location_name='System',
-        location_type='System',
-        owner_id=SYSTEM_UID
-    ))
-    r_unit_testers = usrmgr.create_group(dict(
+        kind='system'
+    )
+    g_unit_testers = authmgr.create_group(
+        sess,
+        owner=SYSTEM_UID,
         id=UNIT_TESTERS_RID,
         name='unit testers',
         descr='Unit Testers',
-        location_name='System',
-        location_type='System',
-        owner_id=SYSTEM_UID
-    ))
+        kind='system'
+    )
 
     # 3// Put 'system' into its groups
-    usrmgr.create_group_member(dict(
-        group_id=r_users.id,
-        user_id=p_system.id,
-        owner_id=SYSTEM_UID
-    ))
-    usrmgr.create_group_member(dict(
-        group_id=r_wheel.id,
-        user_id=p_system.id,
-        owner_id=SYSTEM_UID
-    ))
+    authmgr.create_group_member(
+        sess,
+        owner=SYSTEM_UID,
+        group=g_users,
+        member_user=u_system,
+    )
+    authmgr.create_group_member(
+        sess,
+        owner=SYSTEM_UID,
+        group=g_wheel,
+        member_user=u_system
+    )
 
     # 4// Create users
-    usrmgr.create_user(dict(
+    authmgr.create_user(
+        sess,
+        owner=SYSTEM_UID,
         id=ROOT_UID,
         principal='root',
         email='root@localhost',
@@ -288,46 +294,48 @@ def setup_users(sess, root_pwd):
         display_name='Root',
         pwd=root_pwd,
         is_enabled=True,
-        user_type='System',
-        owner_id=SYSTEM_UID,
-        groups=[r_wheel.name, r_users.name]
-    ))
-    usrmgr.create_user(dict(
+        groups=[g_wheel.name, g_users.name]
+    )
+    authmgr.create_user(
+        sess,
+        owner=SYSTEM_UID,
         id=NOBODY_UID,
         principal='nobody',
+        pwd=None,
         email='nobody@localhost',
         first_name='Nobody',
         display_name='Nobody',
         is_enabled=False,
-        user_type='System',
-        owner_id=SYSTEM_UID,
         # This user is not member of any group
         # Not-authenticated users are automatically 'nobody'
         groups=False
-    ))
-    usrmgr.create_user(dict(
+    )
+    authmgr.create_user(
+        sess,
+        owner=SYSTEM_UID,
         id=SAMPLE_DATA_UID,
         principal='sample_data',
+        pwd=None,
         email='sample_data@localhost',
         first_name='Sample Data',
         display_name='Sample Data',
         is_enabled=False,
-        user_type='System',
-        owner_id=SYSTEM_UID,
         # This user is not member of any group
         groups=False
-    ))
-    usrmgr.create_user(dict(
+    )
+    authmgr.create_user(
+        sess,
+        owner=SYSTEM_UID,
         id=UNIT_TESTER_UID,
         principal='unit_tester',
+        pwd=None,
         email='unit_tester@localhost',
         first_name='Unit-Tester',
         display_name='Unit-Tester',
         is_enabled=False,
         user_type='System',
-        owner_id=SYSTEM_UID,
-        groups=[r_unit_testers.name]
-    ))
+        groups=[g_unit_testers.name]
+    )
 
     # 5// Set sequence counter for user-created things
     # XXX PostgreSQL only
@@ -404,6 +412,18 @@ def setup_permissions(sess):
 
     sess.add(p_all)
     sess.add(p_visit)
+
+
+def setup_tenants(sess):
+    """
+    Call me only after all users and resource are set up!
+    """
+    authmgr.create_tenant(
+        sess,
+        owner=SYSTEM_UID,
+        name='default',
+        cascade=True
+    )
 
 
 def setup(sess, root_pwd, schema_only=False):

@@ -117,6 +117,8 @@ class GroupMember(DbBase, DefaultMixin):
         {'schema': 'pym'}
     )
 
+    IDENTITY_COL = None
+
     group_id = sa.Column(sa.Integer(),
         sa.ForeignKey("pym.group.id",
             onupdate="CASCADE",
@@ -168,6 +170,8 @@ class User(DbBase, DefaultMixin):
     __table_args__ = (
         {'schema': 'pym'}
     )
+
+    IDENTITY_COL = 'principal'
 
     is_enabled = sa.Column(sa.Boolean, nullable=False, default=False,
         info={'colanderalchemy': {'title': _("Enabled?")}})

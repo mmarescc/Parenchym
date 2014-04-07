@@ -1,4 +1,5 @@
 import datetime
+import sqlalchemy as sa
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import and_
 
@@ -7,11 +8,15 @@ from pym.exc import AuthError
 import pym.security
 from pym.cache import FromCache
 
-from .models import (User, Group, GroupMember)
+from .models import (User, Group, GroupMember, Tenant)
 from .const import SYSTEM_UID
 from .events import BeforeUserLoggedIn, UserLoggedIn, UserLoggedOut
 
+
 PASSWORD_SCHEME = 'pbkdf2_sha512'
+
+
+# TODO Maybe refactor login/out functions to accept a DB session as parameter
 
 
 def load_by_principal(principal):
@@ -110,6 +115,7 @@ def login_by_email(request, email, pwd, remote_addr):
     return _login(request, filter_, pwd, remote_addr)
 
 
+# noinspection PyUnusedLocal
 def login_by_identity_url(request, identity_url, remote_addr):
     """
     Logs user in by identity URL (OpenID), returns principal instance.
@@ -119,96 +125,102 @@ def login_by_identity_url(request, identity_url, remote_addr):
     raise NotImplementedError()
 
 
-def create_user(data):
+def create_user(sess, owner, is_enabled, principal, pwd, email, groups=None,
+        **kwargs):
     """
     Creates a new user record.
 
-    Data fields:
-    - ``owner_id``: Required
-    - ``groups``:   Optional list of group names. Group 'users' is always
-                    automatically set.
-                    If we provide a value for groups that evaluates to False,
-                    this account is not member of any group.
-
-    :param data: Dict with data fields
-    :returns: Instance of created user
+    :param sess: A DB session instance.
+    :param owner: ID, ``principal``, or instance of creating user.
+    :param is_enabled: True to enable this user, False to disable.
+    :param principal: Principal string for new user.
+    :param pwd: User's password. We will encrypt it.
+    :param email: User's email address.
+    :param groups: List of groups this user shall be member of. User is at least
+        member of group ``users``. If a group does not exist, it is created.
+        Set to False to skip groups altogether.
+    :param kwargs: See :class:`~pym.auth.models.User`.
+    :return: Instance of created user.
     """
-    # Determine groups this user will be member of.
-    # Always at least 'users'.
-    if 'groups' in data:
-        if data['groups']:
-            groups = set(data['groups'] + ['users'])
-        else:
-            groups = set()
-        del data['groups']
-    else:
-        groups = ['users']
-    # Make sure the password is encrypted
-    if 'pwd' in data:
-        if not data['pwd'].startswith(('{', '$')):
-            data['pwd'] = pym.security.pwd_context.encrypt(data['pwd'],
-                PASSWORD_SCHEME)
-    # If display_name is not explicitly set, use principal.
-    if not 'display_name' in data:
-        data['display_name'] = data['principal']
-    # Allow only lowercase email
-    data['email'] = data['email'].lower()
+    # Ensure, password is encrypted
+    if pwd and not pwd.startswith(('{', '$')):
+        pwd = pym.security.pwd_context.encrypt(pwd, PASSWORD_SCHEME)
+    # Ensure, email is lower case
+    email = email.lower()
 
-    sess = DbSession()
-    # Create user
+    # Create the user
     u = User()
-    for k, v in data.items():
+    # Cannot rely on find(), because when we initialise the DB, owner might not
+    # yet exist.
+    u.owner_id = owner if isinstance(owner, int) else User.find(sess, owner).id
+    u.is_enabled = is_enabled
+    u.principal = principal
+    u.pwd = pwd
+    u.email = email
+    for k, v in kwargs.items():
         setattr(u, k, v)
+    # If display_name is empty, use principal
+    if not u.display_name:
+        u.display_name = u.principal
     sess.add(u)
     sess.flush()  # to get ID of user
+
     # Load/create the groups and memberships
-    for name in groups:
-        try:
-            g = sess.query(Group).filter(
-                and_(
-                    Group.tenant_id == None,  # must be system group
-                    Group.name == name
-                )
-            ).one()
-        except NoResultFound:
-            g = Group()
-            g.name = name
-            g.owner_id = data['owner_id']
-            sess.add(g)
-            sess.flush()
-        gm = GroupMember()
-        gm.member_user_id = u.id
-        gm.group_id = g.id
-        gm.owner_id = u.owner_id
-        sess.add(gm)
-    sess.flush()
+    if groups is not False:
+        # Determine groups this user will be member of.
+        # Always at least 'users'.
+        if groups:
+            groups = set(groups + ['users'])
+        else:
+            groups = ['users']
+        for name in groups:
+            # Try to load the specified group
+            try:
+                g = sess.query(Group).filter(
+                    and_(
+                        Group.tenant_id == None,  # must be system group
+                        Group.name == name
+                    )
+                ).one()
+            # If group does not exist, create one and define membership
+            except NoResultFound:
+                g = create_group(sess, owner, name)
+                create_group_member(sess, owner, g, u)
+            else:
+                # Group did exist, maybe membership also?
+                try:
+                    sess.query(GroupMember).filter(sa.and_(
+                        GroupMember.group_id == g.id,
+                        GroupMember.member_user_id == u.id
+                    )).one()
+                # Nope. Create membership.
+                except NoResultFound:
+                    create_group_member(sess, owner, g, u)
     return u
 
 
-def update_user(data):
+def update_user(sess, user, editor, **kwargs):
     """
     Updates a user.
 
-    Data fields:
-    ``id``:     Required. ID of user to update
-    ``editor_id``: Required
-    ``mtime``:  Required
+    For details about ``**kwargs``, see :class:`~pym.auth.models.User`.
 
-    :param data: Dict with data fields
-    :returns: Instance of updated user
+    :param sess: A DB session instance.
+    :param user: ID, ``name``, or instance of user to update.
+    :param editor: ID, ``principal``, or instance of editing user.
+    :return: Instance of updated user.
     """
-    # Make sure the password is encrypted
-    if 'pwd' in data:
-        if not data['pwd'].startswith(('{', '$')):
-            data['pwd'] = pym.security.pwd_context.encrypt(data['pwd'],
-                PASSWORD_SCHEME)
-    # Allow only lowercase email
-    if 'email' in data:
-        data['email'] = data['email'].lower()
-    sess = DbSession()
-    u = sess.query(User).filter(User.id == data['id']).one()
-    for k, v in data.items():
+    u = User.find(sess, user)
+    u.editor_id = User.find(sess, editor).id
+    u.mtime = datetime.datetime.now()
+    for k, v in kwargs.items():
         setattr(u, k, v)
+    # Ensure, password is encrypted
+    if u.pwd and not u.pwd.startswith(('{', '$')):
+        u.pwd = pym.security.pwd_context.encrypt(u.pwd, PASSWORD_SCHEME)
+    # Ensure, email is lower case
+    if u.email:
+        u.email = u.email.lower()
     # If display_name is empty, use principal
     if not u.display_name:
         u.display_name = u.principal
@@ -216,96 +228,208 @@ def update_user(data):
     return u
 
 
-def delete_user(id_):
+def delete_user(sess, user, deleter, delete_from_db=False):
     """
     Deletes a user.
 
-    :param id_: ID of user to delete
+    :param sess: A DB session instance.
+    :param user: ID, ``name``, or instance of a user.
+    :param deleter: ID, ``principal``, or instance of a user.
+    :param delete_from_db: Optional. Defaults to just tag as deleted (False),
+        set True to physically delete record from DB.
+    :return: None if really deleted, else instance of tagged user.
     """
-    sess = DbSession()
-    u = sess.query(User).filter(User.id == id_).one()
-    sess.delete(u)
+    usr = User.find(sess, user)
+    if delete_from_db:
+        sess.delete(usr)
+        usr = None
+    else:
+        usr.deleter_id = User.find(sess, deleter).id
+        usr.dtime = datetime.datetime.now()
     sess.flush()
+    return usr
 
 
-def create_group(data):
+def create_group(sess, owner, name, **kwargs):
     """
     Creates a new group record.
 
-    Data fields:
-    - ``owner_id``: Required
-    :param data: Dict with data fields
-    :returns: Instance of created group
+    For details about ``**kwargs``, see :class:`~pym.auth.models.Group`.
+
+    :param sess: A DB session instance.
+    :param owner: ID, ``principal``, or instance of a user.
+    :param ctime: Optional timestamp as creation time, defaults to now.
+    :return: Instance of created group.
     """
-    sess = DbSession()
-    g = Group()
-    for k, v in data.items():
-        setattr(g, k, v)
-    sess.add(g)
+    gr = Group()
+    gr.owner_id = User.find(sess, owner).id
+    gr.name = name
+    for k, v in kwargs.items():
+        setattr(gr, k, v)
+    sess.add(gr)
     sess.flush()
-    return g
+    return gr
 
 
-def update_group(data):
+def update_group(sess, group, editor, **kwargs):
     """
     Updates a group.
 
-    Data fields:
-    ``id``:     Required. ID of group to update
-    ``editor_id``: Required
-    ``mtime``:  Required
+    For details about ``**kwargs``, see :class:`~pym.auth.models.Group`.
 
-    :param data: Dict with data fields
-    :returns: Instance of updated group
+    :param sess: A DB session instance.
+    :param group: ID, ``name``, or instance of a group.
+    :param editor: ID, ``principal``, or instance of a user.
+    :return: Instance of updated group.
     """
-    sess = DbSession()
-    g = sess.query(Group).filter(Group.id == data['id']).one()
-    for k, v in data.items():
-        setattr(g, k, v)
+    gr = Group.find(sess, group)
+    gr.editor_id = User.find(sess, editor).id
+    gr.mtime = datetime.datetime.now()
+    for k, v in kwargs.items():
+        setattr(gr, k, v)
     sess.flush()
-    return g
+    return gr
 
 
-def delete_group(id_):
+def delete_group(sess, group, deleter, delete_from_db=False):
     """
     Deletes a group.
 
-    :param id_: ID of group to delete
+    :param sess: A DB session instance.
+    :param group: ID, ``name``, or instance of a group.
+    :param deleter: ID, ``principal``, or instance of a user.
+    :param delete_from_db: Optional. Defaults to just tag as deleted (False),
+        set True to physically delete record from DB.
+    :return: None if really deleted, else instance of tagged group.
     """
-    sess = DbSession()
-    g = sess.query(Group).filter(Group.id == id_).one()
-    sess.delete(g)
+    gr = Group.find(sess, group)
+    if delete_from_db:
+        sess.delete(gr)
+        gr = None
+    else:
+        gr.deleter_id = User.find(sess, deleter).id
+        gr.dtime = datetime.datetime.now()
+        # TODO Replace content of unique fields
     sess.flush()
+    return gr
 
 
-def create_group_member(data):
+def create_group_member(sess, owner, group, member_user=None,
+        member_group=None, **kwargs):
     """
     Creates a new group_member record.
 
-    Data fields:
-    - ``owner_id``:        Required
-    - ``group_id``:      Required
-    - ``user_id``: Required if ``other_group_id`` is not given
-    - ``other_group_id``: Required if ``user_id`` is not given
-    :param data: Dict with data fields
+    For details about ``**kwargs``, see :class:`~pym.auth.models.GroupMember`.
+
     :returns: Instance of created group_member
     """
-    sess = DbSession()
+    if not member_user and not member_group:
+        raise pym.exc.PymError("Either member_user or member_group must be set")
+    if member_user and member_group:
+        raise pym.exc.PymError("Cannot set both member_user and member_group")
     gm = GroupMember()
-    for k, v in data.items():
+    gm.owner_id = User.find(sess, owner).id
+    gm.group_id = Group.find(sess, group).id
+    if member_user:
+        gm.member_user_id = User.find(sess, member_user).id
+    else:
+        gm.member_group_id = Group.find(sess, member_group).id
+    for k, v in kwargs.items():
         setattr(gm, k, v)
     sess.add(gm)
     sess.flush()
     return gm
 
 
-def delete_group_member(id_):
+def delete_group_member(sess, group_member):
     """
     Deletes a group_member.
 
-    :param id_: ID of group_member to delete
+    We always delete a group membership physically, there is no tagging as
+    deleted.
+
+    :param sess: A DB session instance.
+    :param group_member: ID, or instance of a group member.
     """
-    sess = DbSession()
-    gm = sess.query(GroupMember).filter(GroupMember.id == id_).one()
+    gm = GroupMember.find(sess, group_member)
     sess.delete(gm)
     sess.flush()
+
+
+def create_tenant(sess, owner, name, cascade, **kwargs):
+    """
+    Creates a new tenant record.
+
+    :param sess: A DB session instance.
+    :param owner: ID, ``principal``, or instance of a user.
+    :param name: Name.
+    :param cascade: True to also create a group and resource for this tenant.
+    :param kwargs: See :class:`~pym.auth.models.Tenant`.
+    :return: Instance of created tenant.
+    """
+    ten = Tenant()
+    ten.owner_id = User.find(sess, owner).id
+    ten.name = name
+    for k, v in kwargs.items():
+        setattr(ten, k, v)
+    sess.add(ten)
+    sess.flush()  # need ID
+
+    if cascade:
+        # Create tenant's group
+        create_group(sess, owner, name, kind='tenant')
+        # TODO Create tenant's resource
+
+    sess.flush()
+    return ten
+
+
+def update_tenant(sess, tenant, editor, **kwargs):
+    """
+    Updates a tenant.
+
+    For details about ``**kwargs``, see :class:`~pym.auth.models.Tenant`.
+
+    :param sess: A DB session instance.
+    :param tenant: ID, ``name``, or instance of a tenant.
+    :param editor: ID, ``principal``, or instance of a user.
+    :return: Instance of updated tenant.
+    """
+
+    # TODO Rename tenant's resource
+    # TODO Rename tenant's group
+
+    ten = Tenant.find(sess, tenant)
+    ten.editor_id = User.find(sess, editor).id
+    ten.mtime = datetime.datetime.now()
+    for k, v in kwargs.items():
+        setattr(ten, k, v)
+    sess.flush()
+    return ten
+
+
+def delete_tenant(sess, tenant, deleter, delete_from_db=False):
+    """
+    Deletes a tenant.
+
+    :param sess: A DB session instance.
+    :param tenant: ID, ``name``, or instance of a tenant.
+    :param deleter: ID, ``principal``, or instance of a user.
+    :param delete_from_db: Optional. Defaults to just tag as deleted (False),
+        set True to physically delete record from DB.
+    :return: None if really deleted, else instance of tagged tenant.
+    """
+
+    # TODO Delete tenant's resource
+    # TODO Delete tenant's group
+
+    ten = Tenant.find(sess, tenant)
+    if delete_from_db:
+        sess.delete(ten)
+        ten = None
+    else:
+        ten.deleter_id = User.find(sess, deleter).id
+        ten.dtime = datetime.datetime.now()
+        # TODO Replace content of unique fields
+    sess.flush()
+    return ten
