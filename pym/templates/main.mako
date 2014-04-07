@@ -5,26 +5,42 @@ ${parent.styles()}
 </%block>
 
 <div class="row">
-    <div class="col-md-offset-8 col-md-4">
+
+  <div class="col-md-4">
     <ul>
-        <li><a href="${request.resource_url(request.root['__sys__'])}">System</a>
-            <ul>
-                <li><a href="${request.resource_url(request.root['__sys__']['auth'])}">Authentication Manager</a>
-                    <ul>
-                        <li><a href="${request.resource_url(request.root['__sys__']['auth']['users'])}">Manage Users</a></li>
-                        <li><a href="${request.resource_url(request.root['__sys__']['auth']['groups'])}">Manage Groups</a></li>
-                        <li><a href="${request.resource_url(request.root['__sys__']['auth']['group_members'])}">Manage Group Members</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </li>
+      <li><a href="${request.resource_url(request.root)}">General</a>
+        <ul>
+          <li><a href="${request.resource_url(request.root)}">Foo</a>
+          </li>
+        </ul>
+      </li>
     </ul>
-    </div>
+  </div>
+
+
+  <div class="col-md-offset-4 col-md-4">
+    <ul>
+      <li><a href="${request.resource_url(request.root['__sys__'])}">System</a>
+        <ul>
+          <li><a href="${request.resource_url(request.root['__sys__']['auth'])}">Authentication Manager</a>
+            <ul>
+              <li><a href="${request.resource_url(request.root['__sys__']['auth']['users'])}">Manage Users</a>
+              </li>
+              <li><a href="${request.resource_url(request.root['__sys__']['auth']['groups'])}">Manage Groups</a>
+              </li>
+              <li><a href="${request.resource_url(request.root['__sys__']['auth']['group_members'])}">Manage Group Members</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
 </div>
 
 
 <div class="outer-gutter">
 
-    <p>M.A.I.N.</p>
+  <p>M.A.I.N.</p>
 
 </div>
