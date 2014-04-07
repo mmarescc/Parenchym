@@ -6,16 +6,19 @@ ${parent.styles()}
 
 <div class="row">
     <div class="col-md-offset-8 col-md-4">
-        <p><a href="${request.resource_url(request.root['__sys__'])}">System</a></p>
-        <ul>
-            <li><a href="${request.resource_url(request.root['__sys__']['auth'])}">Authentication Manager</a>
-                <ul>
-                    <li><a href="${request.resource_url(request.root['__sys__']['auth']['users'])}">Manage Users</a></li>
-                    <li><a href="${request.resource_url(request.root['__sys__']['auth']['groups'])}">Manage Groups</a></li>
-                    <li><a href="${request.resource_url(request.root['__sys__']['auth']['group_members'])}">Manage Group Members</a></li>
-                </ul>
-            </li>
-        </ul>
+    <ul>
+        <li><a href="${request.resource_url(request.root['__sys__'])}">System</a>
+            <ul>
+                <li><a href="${request.resource_url(request.root['__sys__']['auth'])}">Authentication Manager</a>
+                    <ul>
+                        <li><a href="${request.resource_url(request.root['__sys__']['auth']['users'])}">Manage Users</a></li>
+                        <li><a href="${request.resource_url(request.root['__sys__']['auth']['groups'])}">Manage Groups</a></li>
+                        <li><a href="${request.resource_url(request.root['__sys__']['auth']['group_members'])}">Manage Group Members</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
     </div>
 </div>
 
