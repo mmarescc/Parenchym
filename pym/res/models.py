@@ -74,7 +74,6 @@ def root_factory(request):
     #return root_node
     sess = DbSession()
     n = ResourceNode.load_root(sess, 'root')
-    n.__user__ = request.user
     return n
 
 
@@ -335,20 +334,22 @@ class ResourceNode(DbBase, DefaultMixin):
             owner_id = o.id
         else:
             owner_id = owner.id
-        r = cls.load_root(sess, name)
-        if r:
+        try:
+            r = cls.load_root(sess, name, use_cache=False)
+        except sa.orm.exc.NoResultFound:
+            r = cls(owner_id, name, kind, **kwargs)
+            sess.add(r)
+        else:
             if r.kind == kind:
                 return r
             else:
                 raise ValueError("Root node '{}' already exists, but kind"
                     " differs: is='{}' wanted='{}'".format(
                     name, r.kind, kind))
-        r = cls(owner_id, name, kind, **kwargs)
-        sess.add(r)
         return r
 
     @classmethod
-    def load_root(cls, sess, name='root'):
+    def load_root(cls, sess, name='root', use_cache=True):
         """
         Loads root resource of resource tree.
 
@@ -359,7 +360,8 @@ class ResourceNode(DbBase, DefaultMixin):
         :param name: Name of the wanted root node
         :return: Instance of the root node or, None if not found
         """
-        try:
+        # CAVEAT: Setup fails if we use cache here!
+        if use_cache:
             r = sess.query(
                 cls
             ).options(
@@ -369,13 +371,18 @@ class ResourceNode(DbBase, DefaultMixin):
                 pym.cache.RelationshipCache(cls.children, "auth_long_term",
                 cache_key='resource:{}:None:children'.format(name))
             ).options(
-                pym.cache.RelationshipCache(cls.acl, "auth_long_term")#,
+                # CAVEAT: Program hangs if we use our own cache key here!
+                pym.cache.RelationshipCache(cls.acl, "auth_long_term")  # ,
                 #cache_key='resource:{}:None:acl'.format(name))
             ).filter(
                 sa.and_(cls.parent_id == None, cls.name == name)
             ).one()
-        except sa.orm.exc.NoResultFound:
-            return None
+        else:
+            r = sess.query(
+                cls
+            ).filter(
+                sa.and_(cls.parent_id == None, cls.name == name)
+            ).one()
         return r
 
     def is_root(self):

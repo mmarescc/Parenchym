@@ -10,14 +10,14 @@ import pym.res.models
 import pym.lib
 import pym.exc
 
-from ..models import IAuthNode
+from ..models import IAuthMgrNode
 
 
 _ = lambda s: s
 
 
 @view_defaults(
-    context=IAuthNode,
+    context=IAuthMgrNode,
     permission='manage_auth'
 )
 class UsrMgrView(object):

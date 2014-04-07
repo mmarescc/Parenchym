@@ -1,46 +1,23 @@
 <%inherit file="pym:templates/_layouts/default.mako" />
-<%block name="meta_title">Welcome</%block>
+<%block name="meta_title">Choose Your Destination</%block>
 <%block name="styles">
 ${parent.styles()}
 </%block>
 
-<div class="row">
-
-  <div class="col-md-4">
-    <ul>
-      <li><a href="${request.resource_url(request.root)}">General</a>
-        <ul>
-          <li><a href="${request.resource_url(request.root)}">Foo</a>
-          </li>
-        </ul>
-      </li>
-    </ul>
-  </div>
-
-
-  <div class="col-md-offset-4 col-md-4">
-    <ul>
-      <li><a href="${request.resource_url(request.root['__sys__'])}">System</a>
-        <ul>
-          <li><a href="${request.resource_url(request.root['__sys__']['auth'])}">Authentication Manager</a>
-            <ul>
-              <li><a href="${request.resource_url(request.root['__sys__']['auth']['users'])}">Manage Users</a>
-              </li>
-              <li><a href="${request.resource_url(request.root['__sys__']['auth']['groups'])}">Manage Groups</a>
-              </li>
-              <li><a href="${request.resource_url(request.root['__sys__']['auth']['group_members'])}">Manage Group Members</a>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </li>
-    </ul>
-  </div>
-</div>
-
 
 <div class="outer-gutter">
 
-  <p>M.A.I.N.</p>
+  %if not tenants:
+      <p>Sorry, you do not belong to any tenant.</p>
+      <p>Please contact the administrator.</p>
+  %else:
+      <p>Available Tenants:</p>
+
+      <ul>
+        % for t in tenants:
+            <li><a href="${request.resource_url(request.context[t.name])}">${t.title}</a></li>
+        % endfor
+      </ul>
+  %endif
 
 </div>

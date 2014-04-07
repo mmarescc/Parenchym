@@ -15,6 +15,7 @@ import pym.cli
 import pym.lib
 import pym.auth.setup
 import pym.res.setup
+import pym.tenants.setup
 
 import pym.cli
 import pym.lib
@@ -30,19 +31,24 @@ class InitialiseDbCli(pym.cli.Cli):
         self._config.scan('pym')
         sess = self._sess
 
+        # Create schema 'pym' and all models
         with transaction.manager:
             self._create_schema(sess)
         with transaction.manager:
             pym.models.create_all()
 
         with transaction.manager:
-            pym.auth.setup.setup(sess, root_pwd,
+            # Users and stuff we need to setup the other modules
+            pym.auth.setup.setup_basics(sess, root_pwd,
                 schema_only=self.args.schema_only)
-            pym.res.setup.setup(sess,
-                schema_only=self.args.schema_only)
-
-            if not self.args.schema_only:
-                pym.auth.setup.setup_tenants(sess)
+            sess.flush()
+            # Setup each module
+            pym.res.setup.setup(sess, schema_only=self.args.schema_only)
+            sess.flush()
+            pym.auth.setup.setup(sess, schema_only=self.args.schema_only)
+            sess.flush()
+            pym.tenants.setup.setup(sess, schema_only=self.args.schema_only)
+            sess.flush()
 
             if self.args.alembic_config:
                 alembic_cfg = Config(self.args.alembic_config)

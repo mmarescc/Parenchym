@@ -8,7 +8,7 @@ from pym.exc import AuthError
 import pym.security
 from pym.cache import FromCache
 
-from .models import (User, Group, GroupMember, Tenant)
+from .models import (User, Group, GroupMember)
 from .const import SYSTEM_UID
 from .events import BeforeUserLoggedIn, UserLoggedIn, UserLoggedOut
 
@@ -354,82 +354,3 @@ def delete_group_member(sess, group_member):
     gm = GroupMember.find(sess, group_member)
     sess.delete(gm)
     sess.flush()
-
-
-def create_tenant(sess, owner, name, cascade, **kwargs):
-    """
-    Creates a new tenant record.
-
-    :param sess: A DB session instance.
-    :param owner: ID, ``principal``, or instance of a user.
-    :param name: Name.
-    :param cascade: True to also create a group and resource for this tenant.
-    :param kwargs: See :class:`~pym.auth.models.Tenant`.
-    :return: Instance of created tenant.
-    """
-    ten = Tenant()
-    ten.owner_id = User.find(sess, owner).id
-    ten.name = name
-    for k, v in kwargs.items():
-        setattr(ten, k, v)
-    sess.add(ten)
-    sess.flush()  # need ID
-
-    if cascade:
-        # Create tenant's group
-        create_group(sess, owner, name, kind='tenant')
-        # TODO Create tenant's resource
-
-    sess.flush()
-    return ten
-
-
-def update_tenant(sess, tenant, editor, **kwargs):
-    """
-    Updates a tenant.
-
-    For details about ``**kwargs``, see :class:`~pym.auth.models.Tenant`.
-
-    :param sess: A DB session instance.
-    :param tenant: ID, ``name``, or instance of a tenant.
-    :param editor: ID, ``principal``, or instance of a user.
-    :return: Instance of updated tenant.
-    """
-
-    # TODO Rename tenant's resource
-    # TODO Rename tenant's group
-
-    ten = Tenant.find(sess, tenant)
-    ten.editor_id = User.find(sess, editor).id
-    ten.mtime = datetime.datetime.now()
-    for k, v in kwargs.items():
-        setattr(ten, k, v)
-    sess.flush()
-    return ten
-
-
-def delete_tenant(sess, tenant, deleter, delete_from_db=False):
-    """
-    Deletes a tenant.
-
-    :param sess: A DB session instance.
-    :param tenant: ID, ``name``, or instance of a tenant.
-    :param deleter: ID, ``principal``, or instance of a user.
-    :param delete_from_db: Optional. Defaults to just tag as deleted (False),
-        set True to physically delete record from DB.
-    :return: None if really deleted, else instance of tagged tenant.
-    """
-
-    # TODO Delete tenant's resource
-    # TODO Delete tenant's group
-
-    ten = Tenant.find(sess, tenant)
-    if delete_from_db:
-        sess.delete(ten)
-        ten = None
-    else:
-        ten.deleter_id = User.find(sess, deleter).id
-        ten.dtime = datetime.datetime.now()
-        # TODO Replace content of unique fields
-    sess.flush()
-    return ten

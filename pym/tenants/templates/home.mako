@@ -9,16 +9,32 @@
     node_auth = node_sys[NODE_SYS_AUTH_MGR]
     url_to = request.resource_url
 %>
-<%inherit file="pym:templates/_layouts/sys.mako" />
-<%block name="meta_title">Authentication Manager</%block>
+<%inherit file="pym:templates/_layouts/default.mako" />
+<%block name="meta_title">Welcome</%block>
 <%block name="styles">
 ${parent.styles()}
 </%block>
 
-
 <div class="row">
-    <div class="col-md-4">
+
+  <div class="col-md-4">
+    <ul>
+      <li><a href="${url_to(request.root)}">General</a>
         <ul>
+          <li><a href="${url_to(request.root)}">Foo</a>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+
+  <div class="col-md-offset-4 col-md-4">
+    <ul>
+      <li><a href="${url_to(node_sys)}">System</a>
+        <ul>
+          <li><a href="${url_to(node_auth)}">Authentication Manager</a>
+            <ul>
               <li><a href="${url_to(node_auth[NODE_SYS_AUTH_USER_MGR])}">Manage Users</a>
               </li>
               <li><a href="${url_to(node_auth[NODE_SYS_AUTH_GROUP_MGR])}">Manage Groups</a>
@@ -27,7 +43,17 @@ ${parent.styles()}
               </li>
               <li><a href="${url_to(node_auth[NODE_SYS_AUTH_PERMISSION_MGR])}">Manage Permissions</a>
               </li>
+            </ul>
+          </li>
         </ul>
-    </div>
+      </li>
+    </ul>
+  </div>
 </div>
 
+
+<div class="outer-gutter">
+
+  <p>M.A.I.N.</p>
+
+</div>

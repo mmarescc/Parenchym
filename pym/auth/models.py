@@ -25,27 +25,23 @@ from .const import (NOBODY_UID, NOBODY_PRINCIPAL, NOBODY_EMAIL,
 _ = pyramid.i18n.TranslationStringFactory(pym.i18n.DOMAIN)
 
 
-class IAuthNode(zope.interface.Interface):
+class IAuthMgrNode(zope.interface.Interface):
     pass
 
 
-class IUsersNode(zope.interface.Interface):
+class IUserMgrNode(zope.interface.Interface):
     pass
 
 
-class ITenantsNode(zope.interface.Interface):
+class IGroupMgrNode(zope.interface.Interface):
     pass
 
 
-class IGroupsNode(zope.interface.Interface):
+class IGroupMemberMgrNode(zope.interface.Interface):
     pass
 
 
-class IGroupMembersNode(zope.interface.Interface):
-    pass
-
-
-class IPermissionsNode(zope.interface.Interface):
+class IPermissionMgrNode(zope.interface.Interface):
     pass
 
 
@@ -270,26 +266,6 @@ sa.Index("user_email_ux", sa.func.lower(User.__table__.c.email),
     unique=True)
 sa.Index("user_display_name_ux", sa.func.lower(User.__table__.c.display_name),
     unique=True)
-
-
-class Tenant(DbBase, DefaultMixin):
-    """
-    A tenant.
-    """
-    __tablename__ = "tenant"
-    __table_args__ = (
-        sa.UniqueConstraint('name', name='tenant_ux'),
-        {'schema': 'pym'}
-    )
-
-    name = sa.Column(CleanUnicode(255), nullable=False)
-    # Load description only if needed
-    descr = sa.orm.deferred(sa.Column(sa.UnicodeText, nullable=True))
-    """Optional description."""
-
-    def __repr__(self):
-        return "<{name}(id={id}, name='{n}'>".format(
-            id=self.id, n=self.name, name=self.__class__.__name__)
 
 
 class Group(DbBase, DefaultMixin):

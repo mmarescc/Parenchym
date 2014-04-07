@@ -8,6 +8,7 @@ import pym.models
 
 import pym.res.models
 import pym.auth.models
+import pym.tenants.manager
 
 
 # noinspection PyUnusedLocal
@@ -39,27 +40,16 @@ def imprint(context, request):
     name='main',
     context=pym.res.models.IRootNode,
     renderer='pym:templates/main.mako',
-    permission='view'
+    permission='visit'
 )
 def main(context, request):
-    # lgg = logging.getLogger('pym.test')
-    # sess = pym.models.DbSession()
-    # T = pym.auth.models.Tenant
-    # try:
-    #     tn = sess.query(T).filter(T.name == 'foo').one()
-    #     request.session['cnt'] = tn.descr.count('o')
-    # except sa.orm.exc.NoResultFound:
-    #     tn = pym.auth.models.Tenant()
-    #     tn.owner_id = request.user.uid
-    #     tn.name = 'foo'
-    #     tn.descr = 'o'
-    #     sess.add(tn)
-    #     lgg.debug('Added')
-    #     request.session['cnt'] = 0
-    # else:
-    #     request.session['cnt'] += 1
-    #     lgg.debug('{} {} {} {}'.format(request.session['cnt'], tn.editor_id,
-    #         tn.descr, tn.descr.count('o')))
-    #     tn.descr += 'o'
-    #     tn.editor_id = request.user.uid
-    return dict()
+    # Enum tenants to which current user belongs.
+    # If only one, redirect to tenant home page,
+    # if several, let him choose.
+    sess = pym.models.DbSession()
+    tt = pym.tenants.manager.collect_my_tenants(sess, request.user.uid)
+    if len(tt) == 1:
+        url = request.resource_url(context[tt[0].name])
+        return HTTPFound(location=url)
+    else:
+        return dict(tenants=tt)

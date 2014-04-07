@@ -1,3 +1,5 @@
+from pym.res.models import ResourceNode
+from pym.res.const import NODE_ROOT, NODE_SYS
 from . import manager as authmgr
 from .const import *
 from .models import Permission
@@ -236,7 +238,7 @@ def setup_users(sess, root_pwd):
         id=EVERYONE_RID,
         name='everyone',
         descr='Everyone (incl. unauthenticated users)',
-        kind='system'
+        kind=GROUP_KIND_SYSTEM
     )
     authmgr.create_group(
         sess,
@@ -250,7 +252,7 @@ def setup_users(sess, root_pwd):
         id=WHEEL_RID,
         name='wheel',
         descr='Site Admins',
-        kind='system'
+        kind=GROUP_KIND_SYSTEM
     )
     g_users = authmgr.create_group(
         sess,
@@ -258,7 +260,7 @@ def setup_users(sess, root_pwd):
         id=USERS_RID,
         name='users',
         descr='Authenticated Users',
-        kind='system'
+        kind=GROUP_KIND_SYSTEM
     )
     g_unit_testers = authmgr.create_group(
         sess,
@@ -266,7 +268,7 @@ def setup_users(sess, root_pwd):
         id=UNIT_TESTERS_RID,
         name='unit testers',
         descr='Unit Testers',
-        kind='system'
+        kind=GROUP_KIND_SYSTEM
     )
 
     # 3// Put 'system' into its groups
@@ -414,20 +416,39 @@ def setup_permissions(sess):
     sess.add(p_visit)
 
 
-def setup_tenants(sess):
-    """
-    Call me only after all users and resource are set up!
-    """
-    authmgr.create_tenant(
-        sess,
-        owner=SYSTEM_UID,
-        name='default',
-        cascade=True
-    )
+def setup_resources(sess):
+    n_root = ResourceNode.load_root(sess, name=NODE_ROOT, use_cache=False)
+    n_sys = n_root[NODE_SYS]
+
+    n_sys_auth = n_sys.add_child(sess=sess, owner=SYSTEM_UID, kind="res",
+        name=NODE_SYS_AUTH_MGR, title='AuthManager',
+        iface='pym.auth.models.IAuthMgrNode')
+
+    n_sys_auth.add_child(sess=sess, owner=SYSTEM_UID,
+        kind="res", name=NODE_SYS_AUTH_USER_MGR, title='User Manager',
+        iface='pym.auth.models.IUserMgrNode')
+
+    n_sys_auth.add_child(sess=sess, owner=SYSTEM_UID,
+        kind="res", name=NODE_SYS_AUTH_GROUP_MGR, title='Group Manager',
+        iface='pym.auth.models.IGroupMgrNode')
+
+    n_sys_auth.add_child(sess=sess, owner=SYSTEM_UID,
+        kind="res", name=NODE_SYS_AUTH_GROUP_MEMBER_MGR,
+        title='Group Member Manager',
+        iface='pym.auth.models.IGroupMemberMgrNode')
+
+    n_sys_auth.add_child(sess=sess, owner=SYSTEM_UID,
+        kind="res", name=NODE_SYS_AUTH_PERMISSION_MGR, title='Permission Manager',
+        iface='pym.auth.models.IPermissionMgrNode')
 
 
-def setup(sess, root_pwd, schema_only=False):
+def setup_basics(sess, root_pwd, schema_only=False):
     create_views(sess)
     if not schema_only:
         setup_users(sess, root_pwd)
         setup_permissions(sess)
+
+
+def setup(sess, schema_only=False):
+    if not schema_only:
+        setup_resources(sess)

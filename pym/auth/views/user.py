@@ -94,7 +94,7 @@ def build_schema(field_list, translate_func):
 
 
 @view_defaults(
-    context=pym.auth.models.IUsersNode,
+    context=pym.auth.models.IUserMgrNode,
     permission='manage_auth'
 )
 class UserView(object):
