@@ -121,6 +121,11 @@ class DefaultMixin(object):
     These are: id, ctime, owner, mtime, editor.
     """
 
+    IDENTITY_COL = 'name'
+    """
+    Name of a column that can be used to identify a record uniquely, besides ID.
+    """
+
     id = Column(Integer, primary_key=True, nullable=False,
         info={'colanderalchemy': {'title': _("ID")}})
     """Primary key of table."""
@@ -195,6 +200,22 @@ class DefaultMixin(object):
         from pym.models import todict
         from pprint import pprint
         pprint(todict(self))
+
+    @classmethod
+    def find(cls, sess, obj):
+        if isinstance(obj, int):
+            return sess.query(cls).get(obj)
+        elif isinstance(obj, str):
+            f = cls.IDENTITY_COL
+            return sess.query(cls).filter_by(f=obj).one()
+        elif isinstance(obj, cls):
+            return obj
+        else:
+            raise pym.exc.PymError(
+                'Given object is not suitable to find a {}.'.format(cls))
+
+    def is_deleted(self):
+        return self.deleter_id is not None
 
 
 @sa.event.listens_for(DefaultMixin, 'before_update', propagate=True)
