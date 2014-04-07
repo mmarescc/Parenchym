@@ -29,14 +29,20 @@ class InitialiseDbCli(pym.cli.Cli):
         root_pwd = self.rc.g('auth.user_root.pwd')
         self._config.scan('pym')
         sess = self._sess
+
         with transaction.manager:
             self._create_schema(sess)
+        with transaction.manager:
             pym.models.create_all()
 
+        with transaction.manager:
             pym.auth.setup.setup(sess, root_pwd,
                 schema_only=self.args.schema_only)
             pym.res.setup.setup(sess,
                 schema_only=self.args.schema_only)
+
+            if not self.args.schema_only:
+                pym.auth.setup.setup_tenants(sess)
 
             if self.args.alembic_config:
                 alembic_cfg = Config(self.args.alembic_config)
@@ -48,7 +54,6 @@ class InitialiseDbCli(pym.cli.Cli):
     def _create_schema(sess):
         sess.execute('CREATE SCHEMA IF NOT EXISTS pym')
         mark_changed(sess)
-        transaction.commit()
 
 
 def parse_args(app_class):
