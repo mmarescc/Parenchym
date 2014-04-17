@@ -15,6 +15,7 @@ import pym.models
 import pym.res
 import pym.res.models
 import pym.auth.manager
+import pym.lib
 
 from .rc import Rc
 

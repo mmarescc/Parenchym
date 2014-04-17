@@ -11,7 +11,8 @@ import subprocess
 import json
 import decimal
 import slugify as python_slugify
-
+import sqlalchemy as sa
+import sqlalchemy.orm.exc
 import magic
 import colander
 import yaml
@@ -623,7 +624,16 @@ def validate_name(s):
 
 
 def build_breadcrumbs(request):
+    # Ensure that our context still has a session.
+    # It may have lost its session if we are called from an error page after
+    # an exception that closed the current session.
+    sess = sa.inspect(request.context).session
+    if not sess:
+        sess = pym.models.DbSession()
+        sess.add(request.context)
+
     from pyramid.location import lineage
+    # If context has no session, this raises a DetachedInstanceError:
     linea = list(lineage(request.context))
     bcs = []
     for i, elem in enumerate(reversed(linea)):

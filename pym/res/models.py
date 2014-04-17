@@ -166,7 +166,7 @@ class ResourceNode(DbBase, DefaultMixin):
         # many to one + adjacency list - remote_side
         # is required to reference the 'remote'
         # column in the join condition.
-        backref=backref("parent", remote_side="ResourceNode.id"),
+        backref=backref("parent", lazy="select", remote_side="ResourceNode.id"),
 
         # children will be represented as a dictionary
         # on the "name" attribute.
@@ -398,6 +398,15 @@ class ResourceNode(DbBase, DefaultMixin):
         ACL for Pyramid's authorization policy.
         """
         sess = sa.inspect(self).session
+        # Bind ourselves to a new session in case we'd lost our session. This
+        # may happen if the current request created an exception, which closes
+        # the current session, and Pyramid redirects to an error page. That
+        # error page again uses DB objects, but since the session had been
+        # closed, it fails with a DetachedInstanceError, or and object's session
+        # being None.
+        if not sess:
+            sess = DbSession()
+            sess.add(self)
         acl = []
         perms = pam.Permission.load_all(sess)
         # Convert self.acl into Pyramid's ACL
@@ -418,7 +427,7 @@ class ResourceNode(DbBase, DefaultMixin):
         return acl
 
     @classmethod
-    def load_child(cls, sess, id_or_name, parent_id=None):
+    def load_child(cls, sess, id_or_name, parent_id=None, use_cache=True):
         if isinstance(id_or_name, int):
             fil = [cls.id == id_or_name]
         else:
@@ -426,33 +435,40 @@ class ResourceNode(DbBase, DefaultMixin):
                 cls.parent_id == parent_id,
                 cls.name == id_or_name,
             ]
-        return sess.query(
-            cls
-        ).options(
-            pym.cache.FromCache("auth_long_term",
-                cache_key='resource:{}:{}'.format(
-                    id_or_name, parent_id))
-        ).options(
-            pym.cache.RelationshipCache(cls.children, "auth_long_term",
-                cache_key='resource:{}:{}:children'.format(
-                    id_or_name, parent_id))
-        ).options(
-            pym.cache.RelationshipCache(cls.acl, "auth_long_term",
-                cache_key='resource:{}:{}:acl'.format(
-                    id_or_name, parent_id))
-        ).options(
-            pym.cache.RelationshipCache(cls.parent, "auth_long_term")#,
-                #cache_key='presource:{}:{}:parent'.format(
-                #    id_or_name, parent_id))
-        ).filter(
-            sa.and_(*fil)
-        ).one()
+        if use_cache:
+            return sess.query(
+                cls
+            ).options(
+                pym.cache.FromCache("auth_long_term",
+                    cache_key='resource:{}:{}'.format(
+                        id_or_name, parent_id))
+            ).options(
+                pym.cache.RelationshipCache(cls.children, "auth_long_term",
+                    cache_key='resource:{}:{}:children'.format(
+                        id_or_name, parent_id))
+            ).options(
+                pym.cache.RelationshipCache(cls.acl, "auth_long_term",
+                    cache_key='resource:{}:{}:acl'.format(
+                        id_or_name, parent_id))
+            ).options(
+                pym.cache.RelationshipCache(cls.parent, "auth_long_term")#,
+                    #cache_key='presource:{}:{}:parent'.format(
+                    #    id_or_name, parent_id))
+            ).filter(
+                sa.and_(*fil)
+            ).one()
+        else:
+            return sess.query(
+                cls
+            ).filter(
+                sa.and_(*fil)
+            ).one()
 
     def __getitem__(self, item):
         cls = self.__class__
         sess = sa.inspect(self).session
         try:
-            child = cls.load_child(sess, item, self.id)
+            child = cls.load_child(sess, item, self.id, use_cache=True)
         except sa.orm.exc.NoResultFound as exc:
             raise KeyError("Child resource not found: '{}'".format(item))
         return child
