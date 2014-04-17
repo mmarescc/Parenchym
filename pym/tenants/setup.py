@@ -2,19 +2,19 @@ import sqlalchemy as sa
 from pym.auth.models import User, Group, GroupMember
 from pym.auth.manager import create_group_member
 from pym.res.models import ResourceNode
-from pym.res.const import NODE_ROOT, NODE_SYS
-from pym.auth.const import SYSTEM_UID, NODE_SYS_AUTH_MGR, GROUP_KIND_TENANT
-from .const import NODE_TENANT_MGR, DEFAULT_TENANT_NAME, DEFAULT_TENANT_TITLE
+from pym.res.const import NODE_NAME_ROOT, NODE_NAME_SYS
+from pym.auth.const import SYSTEM_UID, NODE_NAME_SYS_AUTH_MGR, GROUP_KIND_TENANT
+from .const import NODE_NAME_TENANT_MGR, DEFAULT_TENANT_NAME, DEFAULT_TENANT_TITLE
 from . import manager as tmgr
 
 
 def setup_resources(sess):
-    n_root = ResourceNode.load_root(sess, name=NODE_ROOT, use_cache=False)
-    n_sys_auth = n_root[NODE_SYS][NODE_SYS_AUTH_MGR]
+    n_root = ResourceNode.load_root(sess, name=NODE_NAME_ROOT, use_cache=False)
+    n_sys_auth = n_root[NODE_NAME_SYS][NODE_NAME_SYS_AUTH_MGR]
 
     n_sys_auth.add_child(
         sess=sess, owner=SYSTEM_UID,
-        kind="res", name=NODE_TENANT_MGR, title='Tenant Manager',
+        kind="res", name=NODE_NAME_TENANT_MGR, title='Tenant Manager',
         iface='pym.auth.models.ITenantMgrNode')
 
 

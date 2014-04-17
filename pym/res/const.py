@@ -1,3 +1,3 @@
-NODE_ROOT = 'root'
-NODE_HELP = 'help'
-NODE_SYS = '__sys__'
+NODE_NAME_ROOT = 'root'
+NODE_NAME_HELP = 'help'
+NODE_NAME_SYS = '__sys__'

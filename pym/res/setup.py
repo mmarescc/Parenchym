@@ -6,15 +6,15 @@ from .const import *
 
 def setup_resources(sess):
     n_root = ResourceNode.create_root(sess=sess, owner=SYSTEM_UID, kind="res",
-        name=NODE_ROOT, title='Root',
+        name=NODE_NAME_ROOT, title='Root',
         iface='pym.res.models.IRootNode')
 
     n_root.add_child(sess=sess, owner=SYSTEM_UID, kind="res",
-        name=NODE_HELP, title='Help',
+        name=NODE_NAME_HELP, title='Help',
         iface='pym.res.models.IHelpNode')
 
     n_root.add_child(sess=sess, owner=SYSTEM_UID, kind="res",
-        name=NODE_SYS, title='System',
+        name=NODE_NAME_SYS, title='System',
         iface='pym.res.models.ISystemNode')
 
     return n_root

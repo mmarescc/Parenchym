@@ -1,4 +1,4 @@
-NODE_TENANT_MGR = 'tenant_mgr'
+NODE_NAME_TENANT_MGR = 'tenant_mgr'
 
 DEFAULT_TENANT_NAME = 'default'
 DEFAULT_TENANT_TITLE = 'Default'

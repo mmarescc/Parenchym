@@ -4,7 +4,7 @@ from pym.auth.models import User, Group, GroupMember
 from pym.auth.manager import create_group
 from pym.auth.const import SYSTEM_UID, GROUP_KIND_TENANT
 from pym.res.models import ResourceNode
-from pym.res.const import NODE_ROOT
+from pym.res.const import NODE_NAME_ROOT
 from .models import Tenant
 
 
@@ -31,7 +31,7 @@ def create_tenant(sess, owner, name, cascade, **kwargs):
         # Create tenant's group
         create_group(sess, owner, name, kind=GROUP_KIND_TENANT,
             descr="All members of tenant " + name)
-        n_root = ResourceNode.load_root(sess, name=NODE_ROOT)
+        n_root = ResourceNode.load_root(sess, name=NODE_NAME_ROOT)
 
         try:
             title = kwargs['title']
