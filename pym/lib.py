@@ -1,5 +1,6 @@
 import collections
 import datetime
+import enum
 import functools
 import time
 import re
@@ -64,6 +65,21 @@ RE_INTERVAL_DATETIME = re.compile(
     r')?'
     r'$'
 )
+
+
+class Enum(enum.Enum):
+    @classmethod
+    def as_choices(cls):
+        """
+        Returns members as list of 2-tuples suitable as choices for HTML select
+        lists.
+
+        Tuple[0] is the name of the member as string, and tuple[1] is its value.
+
+        :return: Members as list of 2-tuples
+        """
+        return [(name, member.value)
+            for name, member in cls.__members__.items()]
 
 
 class JsonEncoder(json.JSONEncoder):
