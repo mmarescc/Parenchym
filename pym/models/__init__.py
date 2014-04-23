@@ -205,14 +205,13 @@ class DefaultMixin(object):
     def find(cls, sess, obj):
         if isinstance(obj, int):
             return sess.query(cls).get(obj)
-        elif isinstance(obj, str):
-            f = cls.IDENTITY_COL
-            return sess.query(cls).filter_by(f=obj).one()
         elif isinstance(obj, cls):
             return obj
         else:
-            raise pym.exc.PymError(
-                'Given object is not suitable to find a {}.'.format(cls))
+            if not cls.IDENTITY_COL:
+                raise TypeError('{} has no IDENTITY_COL'.format(cls.__name__))
+            fil = {cls.IDENTITY_COL: obj}
+            return sess.query(cls).filter_by(**fil).one()
 
     def is_deleted(self):
         return self.deleter_id is not None
@@ -225,7 +224,7 @@ def receive_before_update(mapper, connection, target):
     if will_result_in_update_sql:
         # Now check editor_id
         if target.editor_id is None:
-            raise ValueError('Editor must be set on update')
+            raise ValueError('Editor must be set on update for ' + str(target))
 
 
 # ================================
