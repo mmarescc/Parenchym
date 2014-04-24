@@ -251,9 +251,9 @@ def receive_before_update(mapper, connection, target):
 #     sql = cursor.mogrify(statement, parameters).decode('UTF-8')
 #     print("\n", 'v' * 79)
 #     print(sqlparse.format(sql, reindent=True, keyword_case='upper'))
-#     print('-' * 79, "\n")
-#     from traceback import print_stack
-#     print_stack()
+#     # print('-' * 79, "\n")
+#     # from traceback import print_stack
+#     # print_stack()
 #     print('^' * 79, "\n")
 #     return statement, parameters
 
