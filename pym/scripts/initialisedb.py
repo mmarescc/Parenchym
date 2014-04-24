@@ -5,10 +5,13 @@ import logging
 import sys
 import os
 
-from zope.sqlalchemy import mark_changed
+from zope.sqlalchemy import mark_changed, ZopeTransactionExtension
 
 from alembic.config import Config
 from alembic import command
+import sqlalchemy as sa
+import sqlalchemy.orm
+import sqlalchemy.ext.declarative
 
 import pym.models
 import pym.cli
@@ -22,9 +25,15 @@ import pym.lib
 import pym.models
 
 
+# Do not use the scoped session from the framework
+DbSession = sa.orm.sessionmaker(extension=ZopeTransactionExtension())
+DbBase = sa.ext.declarative.declarative_base()
+
+
 class InitialiseDbCli(pym.cli.Cli):
     def __init__(self):
         super().__init__()
+        self.sess = None
 
     def run(self):
         root_pwd = self.rc.g('auth.user_root.pwd')
@@ -80,13 +89,22 @@ def parse_args(app_class):
 def main(argv=None):
     if not argv:
         argv = sys.argv
+
     start_time = time.time()
     app_name = os.path.basename(argv[0])
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s %(name)s %(levelname)-8s %(message)s'
+    )
     lgg = logging.getLogger('cli.' + app_name)
 
     args = parse_args(InitialiseDbCli)
     runner = InitialiseDbCli()
     runner.init_app(args, lgg=lgg, setup_logging=True)
+    # Init session after app!
+    DbSession.configure(bind=pym.models.DbEngine, autocommit=True)
+    DbBase.metadata.bind = pym.models.DbEngine
+    runner.sess = DbSession()
     # noinspection PyBroadException
     try:
         runner.run()
@@ -94,11 +112,9 @@ def main(argv=None):
         lgg.exception(exc)
         lgg.fatal('Program aborted!')
     else:
-        lgg.info('Finished in {} secs.'.format(time.time() - start_time))
-        lgg.info("Directory 'install/db' may contain SQL scripts"
-              " you have to run manually.")
+        lgg.info('Finished.')
     finally:
-        # Do some cleanup or saving etc.
+        lgg.debug('{} secs'.format(time.time() - start_time))
         pass
 
 
