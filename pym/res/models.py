@@ -310,15 +310,7 @@ class ResourceNode(DbBase, DefaultMixin):
             user=user, group=group, **kwargs)
 
     def add_child(self, sess, owner, kind, name, **kwargs):
-        if isinstance(owner, int):
-            owner_id = owner
-        elif isinstance(owner, str):
-            o = sess.query(pam.User).filter(
-                pam.User.principal == owner
-            ).one()
-            owner_id = o.id
-        else:
-            owner_id = owner.id
+        owner_id = pam.User.find(sess, owner).id
         n = ResourceNode(owner_id=owner_id, kind=kind, name=name, **kwargs)
         n.parent = self
         return n
