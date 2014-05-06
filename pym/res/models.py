@@ -316,6 +316,19 @@ class ResourceNode(DbBase, DefaultMixin):
         return n
 
     @classmethod
+    def find(cls, sess, parent, **kwargs):
+        """
+        Finds a resource node with given attributes.
+
+        :returns: Instance of node if it exists, False otherwise.
+        """
+        parent_id = parent if isinstance(parent, int) else parent.id
+        try:
+            return sess.query(cls).filter_by(parent_id=parent_id, **kwargs).one()
+        except sa.orm.exc.NoResultFound:
+            return False
+
+    @classmethod
     def create_root(cls, sess, owner, name, kind, **kwargs):
         if isinstance(owner, int):
             owner_id = owner

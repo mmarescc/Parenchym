@@ -1,16 +1,8 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        define(function(require, exports, module) {
-            var $;
-            $ = require('jquery');
-            require('ui/pnotify/jquery.pnotify');
-            //require('static-pym/vendor/jstorage.min');
-            // Also create a global in case some scripts
-            // that are loaded still are looking for
-            // a global even when an AMD loader is in use.
-            return (root.PYM = factory($));
-        });
+        /* PNOTIFY define(['jquery', 'pnotify'], factory); */
+        define(['jquery'], factory);
     } else {
         // Browser globals
         root.PYM = factory(root.$);
@@ -19,7 +11,6 @@
     /**
      * Private
      */
-
     var rc
         ;
 
@@ -35,7 +26,7 @@
         this.rc = rc;
         this.csrf_token = rc['csrf_token'];
         this.base_url = rc['base_url'];
-        my.init_growl();
+        /* PNOTIFY my.init_growl(); */
         my.init_pym(rc);
         my.init_ajax();
     };
@@ -45,8 +36,8 @@
          $.pnotify.defaults.shadow = true;
          $.pnotify.defaults.closer = true;
          */
-        $.pnotify.defaults.opacity = .9;
-        $.pnotify.defaults.styling = 'jqueryui';
+        PNotify.prototype.options.opacity = .9;
+        PNotify.prototype.options.styling = 'jqueryui';
     };
 
     my.init_pym = function () {
@@ -152,6 +143,8 @@
     };
 
     my.growl = function(msg) {
+        /* PNOTIFY */ return;
+
         if (! msg.kind) msg.kind = 'notice';
         if (! msg.title) msg.title = msg.kind;
         // Put timestamp into title
@@ -199,7 +192,7 @@
         if (! msg.icon) msg.icon = icon;
         msg.hide = ! (msg.kind[0] == 'e' || msg.kind[0] == 'f');
         // Show message
-        $.pnotify(msg);
+        PNotify(msg);
     };
 
     my.growl_ajax_resp = function (resp) {

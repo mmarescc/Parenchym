@@ -87,7 +87,7 @@ class JsonEncoder(json.JSONEncoder):
         if hasattr(obj, 'isoformat'):
             return obj.isoformat()
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            return str(obj)
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
 

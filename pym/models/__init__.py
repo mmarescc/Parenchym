@@ -321,6 +321,35 @@ def create_all():
 def add_cache_region(name, region):
     cache_regions[name] = region
 
+
+def exists(sess, name, schema='public'):
+    """
+    Checks if given relation exists.
+
+    Relation may be:
+
+    r = ordinary table
+    i = index
+    S = sequence
+    v = view
+    f = foreign table
+
+    :param sess: Instance of a DB session.
+    :param name: Name of the relation.
+    :param schema: Optional name of schema. Defaults to 'public'.
+    :return: One of above mentioned letters if relation exists, None if not.
+    """
+    q = sa.text("""
+        SELECT c.relkind
+        FROM   pg_class     c
+        JOIN   pg_namespace n ON n.oid = c.relnamespace
+        WHERE  c.relname = :name     -- sequence name here
+        AND    n.nspname = :schema  -- schema name here
+        AND    c.relkind = ANY('{r,i,S,v,f}');
+    """)
+    k = sess.execute(q, {'name': name, 'schema': schema}).scalar()
+    return k if k else None
+
 # ================================
 
 ### # ===[ FOR SQLITE ]=======
