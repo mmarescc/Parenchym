@@ -40,7 +40,7 @@ prettytable
 psycopg2
 pyasn1
 pycrypto
-pygit2
+#pygit2
 pyinotify
 pyparsing
 pyramid
