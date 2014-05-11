@@ -8,6 +8,8 @@ from dogpile.cache import make_region
 # noinspection PyPackageRequirements
 from dogpile.cache.api import NO_VALUE
 
+# TODO Fetch config settings from RC
+
 
 def _stringify(s):
     if isinstance(s, sa.orm.session.Session):
