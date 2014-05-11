@@ -1,8 +1,8 @@
 (function (root, factory) {
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
-        /* PNOTIFY define(['jquery', 'pnotify'], factory); */
-        define(['jquery'], factory);
+        define(['jquery', 'pnotify', 'pnotify.buttons'], factory);
+        //define(['jquery'], factory);
     } else {
         // Browser globals
         root.PYM = factory(root.$);
@@ -26,18 +26,14 @@
         this.rc = rc;
         this.csrf_token = rc['csrf_token'];
         this.base_url = rc['base_url'];
-        /* PNOTIFY my.init_growl(); */
+        my.init_growl();
         my.init_pym(rc);
         my.init_ajax();
     };
 
     my.init_growl = function () {
-        /*$.pnotify.defaults.width = '400px';
-         $.pnotify.defaults.shadow = true;
-         $.pnotify.defaults.closer = true;
-         */
-        PNotify.prototype.options.opacity = .9;
-        PNotify.prototype.options.styling = 'jqueryui';
+        PNotify.prototype.options.opacity = 0.9;
+        PNotify.prototype.options.styling = 'fontawesome';
     };
 
     my.init_pym = function () {
@@ -143,8 +139,6 @@
     };
 
     my.growl = function(msg) {
-        /* PNOTIFY */ return;
-
         if (! msg.kind) msg.kind = 'notice';
         if (! msg.title) msg.title = msg.kind;
         // Put timestamp into title
@@ -166,33 +160,38 @@
         switch (msg.kind[0]) {
             case 'n':
                 msg.type = 'notice';
-                icon = 'ui-icon ui-icon-comment';
+                icon = 'fa ui-icon-comment';
                 break;
             case 'i':
                 msg.type = 'info';
-                icon = 'ui-icon ui-icon-info';
+                icon = 'fa ui-icon-info';
                 break;
             case 'w':
                 msg.type = 'warning';
-                icon = 'ui-icon ui-icon-notice';
+                icon = 'fa fa-exclamation';
                 break;
             case 'e':
-                icon = 'ui-icon ui-icon-alert';
+                icon = 'fa  fa-exclamation-triangle';
                 msg.type = 'error';
                 break;
             case 'f':
-                icon = 'ui-icon ui-icon-alert';
+                icon = 'fa fa-exclamation-triangle';
                 msg.type = 'error';
                 break;
             case 's':
-                icon = 'ui-icon ui-icon-check';
+                icon = 'fa fa-check';
                 msg.type = 'success';
                 break;
         }
         if (! msg.icon) msg.icon = icon;
         msg.hide = ! (msg.kind[0] == 'e' || msg.kind[0] == 'f');
+		msg.buttons = {
+            closer: true,
+            sticker: true
+        };
+        msg.history = { menu: true };
         // Show message
-        PNotify(msg);
+        new PNotify(msg);
     };
 
     my.growl_ajax_resp = function (resp) {
