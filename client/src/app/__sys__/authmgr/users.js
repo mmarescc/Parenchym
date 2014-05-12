@@ -1,5 +1,5 @@
-require(['requirejs/domReady!', 'ng/angular.min', 'pym/app', 'ng/angular-resource.min',
-    'ng/ui/angular-ui-router.min'], function (document, angular) {
+require(['requirejs/domReady!', 'ng',     'pym/app', 'ng-resource', 'ng-ui-router'],
+function (document,              angular,  PymApp) {
 
     'use strict';
 
