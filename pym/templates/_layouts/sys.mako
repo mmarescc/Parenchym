@@ -40,6 +40,7 @@
                     , 'requirejs':       'static-pym/vendor/requirejs'
                     , 'd3':              'static-pym/vendor/d3/d3.min'
                     , 'pnotify':         'static-pym/vendor/pnotify/pnotify.core'
+                    , 'pnotify.buttons': 'static-pym/vendor/pnotify/pnotify.buttons'
                     , 'select2':         'static-pym/vendor/select2/select2.min'
                     , 'ng':              'static-pym/vendor/angular/angular.min'
                     , 'ng-resource':     'static-pym/vendor/angular-resource/angular-resource.min'
@@ -54,13 +55,16 @@
                     , 'ccg-v':           'static-ccg/vendor'
                 }
                 , shim: {
-                      'ng':                                   {deps: ['jquery'], exports: 'angular'}
-                    , 'jq-ui':                                ['jquery']
-                    , 'ui/timepicker/timepicker':      ['ui/jquery-ui']
-                    , 'ui/pnotify/jquery.pnotify':     ['ui/jquery-ui']
-                    , 'ng-grid':                              ['ng']
-                    , 'ng-ui-select2':                        ['ng', 'select2']
+                      'jq-ui':                                ['jquery']
                     , 'select2':                              ['ng']
+                    , 'pnotify.buttons':                      ['pnotify']
+                    , 'ng':                                   {deps: ['jquery'], exports: 'angular'}
+                    , 'ng-resource':                          ['ng']
+                    , 'ng-grid':                              ['ng']
+                    , 'ng-ui':                                ['ng']
+                    , 'ng-ui-select2':                        ['ng', 'select2']
+                    , 'ng-ui-bs':                             ['ng']
+                    , 'ng-ui-router':                         ['ng']
                 }
                 , waitSeconds: 15
             };
@@ -95,8 +99,29 @@
 
         <%include file="pym:templates/_layouts/page_footer.mako" />
         <script>
-        require(['requirejs/domReady!', 'jquery', 'pym/pym'], function(doc, $, PYM) {
+        require(['requirejs/domReady!', 'jquery', 'pym/pym', 'ng',    'pym/app'],
+        function( doc,                   $,        PYM,       angular, PymApp) {
             ${pym.growl_flash()}
+
+            var MainMenuCtrl = PymApp.controller('MainMenuCtrl',
+                    ['$scope', '$http',
+            function ($scope, $http) {
+
+                $scope.model = {};
+                $scope.model.items = {};
+                $scope.model.active_item = null;
+
+                function load_menu_items()
+                {
+                    $http.get('/xhr_main_menu', {})
+                        .success(function(data, status, headers, config) {
+                            $scope.model.items = data.data;
+                        });
+                }
+                load_menu_items();
+
+            }]);
+
         });
         </script>
     </body>

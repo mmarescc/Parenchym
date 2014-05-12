@@ -3,6 +3,14 @@
     from pym.res.helper import linkto_help
 %>
 <%block name="pageHeader" args="parent, pym, render_flash">
+
+    <script type="text/ng-template"  id="menu_item_renderer.html">
+        <a href="{{item.href}}">{{item.text}}</a>
+        <ul>
+            <li ng-repeat="item in item.children" ng-include="'menu_item_renderer.html'"></li>
+        </ul>
+    </script>
+
     <header>
         % if render_flash:
         <div class="row">
@@ -35,7 +43,15 @@
         <div class="row">
             <div class="col-md-12" id="breadcrumbs">
                 <div class="inner">
-                    ${pym.breadcrumbs()}
+                    <nav>
+                        <i class="fa fa-bars ccp-red button"></i>
+                        <div class="menu">
+                            <ul ng-controller="MainMenuCtrl">
+                                <li ng-repeat="item in model.items" ng-include="'menu_item_renderer.html'"></li>
+                            </ul>
+                        </div>
+                    </nav>
+                    <div class="crumbs">${pym.breadcrumbs()}</div>
                 </div>
             </div>
         </div>

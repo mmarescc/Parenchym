@@ -29,10 +29,11 @@ body {height: 100%;}
 
 #page_container {
   min-height: 100%;
+  overflow: auto;
 }
 #page_content {
   overflow: auto;
-  padding-bottom: $footer-height + $footer-top-margin;
+  padding-bottom: $footer-height;
 }
 
 
@@ -88,6 +89,8 @@ body > footer {
   @include border-bottom-radius($border-radius-base);
   color: $breadcrumb-color;
   background-color: $breadcrumb-bg;
+  vertical-align: middle;
+  height: $line-height-computed;
   a {
     color: $breadcrumb-color;
     &:hover { color: $breadcrumb-active-color; }
@@ -95,8 +98,45 @@ body > footer {
   .inner {
     margin-left: -1px; // border-width of breadcrumbs
   }
+  nav {
+    display: inline-block;
+    padding: 0 1em 0 0;
+    margin: 0;
+    position: absolute;
+    &:hover {
+      .menu {display: block;}
+    }
+    .button {
+      line-height: 0px;
+      margin: 0;
+      padding: 0;
+    }
+    .menu {
+      display: none;
+      position: absolute;
+      background-color: white;
+      border: solid 1px $breadcrumb-border-color;
+      @include border-bottom-radius($border-radius-base);
+      background-color: $breadcrumb-bg;
+      padding: 4px 8px;
+      white-space: nowrap;
+      z-index: 1000;
   ul {
+        margin: 0;
+        padding: 0px;
+        list-style-position: inside;
     list-style-type: none;
+        ul {
+          margin-left: 12px;
+        }
+      }
+    }
+  }
+  .crumbs {
+    margin-left: 2em;
+    display: inline-block;
+    ul {
+      list-style-type: none;
     padding: 0px;
     margin: 0px;
     li {
@@ -113,6 +153,7 @@ body > footer {
     }
   }
 }
+}
 
 #page_title {
   font-size: 180%;
@@ -120,4 +161,16 @@ body > footer {
 
 .content-margin-top {
   margin-top: 12px;
+}
+
+.imprint h2 { font-size: $font-size-base; font-weight: bold; color: $brand-primary; }
+
+.ccp-red { color: $brand-primary; }
+
+
+.pym-panel {
+  @include border-bottom-radius($border-radius-base);
+  @include border-top-radius($border-radius-base);
+  background-color:  $breadcrumb-bg;
+  padding: 4px;
 }
