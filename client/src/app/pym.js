@@ -52,7 +52,7 @@
         var that = this;
         $.ajaxSetup({
             headers: {
-                'X-CSRF-Token': that.csrf_token
+                'X-XSRF-Token': that.csrf_token
             }
         });
         $('body').ajaxError(function (evt, jqXHR, ajaxSettings, thrownError) {

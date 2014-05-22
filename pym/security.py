@@ -119,15 +119,26 @@ def not_found_view(request):
 def validate_csrf_token(event):
     """Validates CSRF token for XHR (AJAX) and POST requests.
 
-    POST requests must send the token in (hidden) field ``csrf_token``.
+    POST requests must send the token in (hidden) field ``XSRF_TOKEN``.
 
-    XHR requests must send the token as HTML header ``X-CSRF-Token``.
+    XHR requests must send the token as HTML header ``X-XSRF-TOKEN``.
     On the client side, application PYM initialises jQuery ajax calls to
     automatically send this header.
 
     The benefit is that a CSRF token is sent also from 3rd-party widgets
     that do not allow to modify the sent data.
+
+    The name of field and header are compliant with AngularJS, and alas differ
+    from Pyramid's default.
     """
     request = event.request
     if request.is_xhr or request.method.upper() in ('POST', 'PUT', 'DELETE'):
-        pyramid.session.check_csrf_token(request)
+        pyramid.session.check_csrf_token(request, token='XSRF_TOKEN',
+            header='X-XSRF-TOKEN', raises=True)
+
+
+@subscriber(NewRequest)
+def set_csrf_token_cookie(event):
+    resp = event.request.response
+    resp.set_cookie('XSRF-TOKEN', value=event.request.session.get_csrf_token(),
+        max_age=30 * 3600)
