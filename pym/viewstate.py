@@ -17,8 +17,8 @@ class ViewState(object):
         """
         self._inp = inp
         self.default_pg = 0
-        self.default_ps = 10
-        self.allowed_ps = (1, 1000)
+        self.default_ps = 100
+        self.allowed_ps = (100, 200, 500)
         self.allowed_sort_fields = ('id', )
         self.allowed_sort_dirs = ('asc', 'desc')
 
@@ -52,7 +52,7 @@ class ViewState(object):
         return ps
 
     @property
-    def query(self):
+    def filter_text(self):
         return self.RE_WHITESPACE.sub(' ', self.inp.get('q', '').strip())
 
     @property
