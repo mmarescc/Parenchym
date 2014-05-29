@@ -333,6 +333,7 @@ def exists(sess, name, schema='public'):
     S = sequence
     v = view
     f = foreign table
+    m = materialized view
 
     :param sess: Instance of a DB session.
     :param name: Name of the relation.
@@ -345,7 +346,7 @@ def exists(sess, name, schema='public'):
         JOIN   pg_namespace n ON n.oid = c.relnamespace
         WHERE  c.relname = :name     -- sequence name here
         AND    n.nspname = :schema  -- schema name here
-        AND    c.relkind = ANY('{r,i,S,v,f}');
+        AND    c.relkind = ANY('{r,i,S,v,f,m}');
     """)
     k = sess.execute(q, {'name': name, 'schema': schema}).scalar()
     return k if k else None
