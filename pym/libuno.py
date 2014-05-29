@@ -163,8 +163,9 @@ class Listener():
                     ],
                     env=os.environ
                 )
-            except subprocess.CalledProcessError:
-                self.lgg.exception("Failed to start {} with '{}'".format(
+            except subprocess.CalledProcessError as exc:
+                self.lgg.exception(exc)
+                self.lgg.error("Failed to start {} with '{}'".format(
                     self.office, self.conn
                 ))
             else:
