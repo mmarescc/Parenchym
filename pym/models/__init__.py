@@ -372,7 +372,7 @@ def exists(sess, name, schema='public'):
 
 # ===[ HELPER ]===================
 
-def todict(o, fully_qualified=False, fmap=None):
+def todict(o, fully_qualified=False, fmap=None, excludes=None):
     """Transmogrifies data of record object into dict.
 
     Inspired by
@@ -387,7 +387,7 @@ def todict(o, fully_qualified=False, fmap=None):
         E.g. a KeyedTuple does not.
     :param fmap: Mapping of field names to functions. Each function is called to
         build the value for this field.
-
+    :param excludes: Optional list of column names to exclude
     :rtype: Dict
     """
     def convert_datetime(v):
@@ -398,10 +398,14 @@ def todict(o, fully_qualified=False, fmap=None):
             return None
 
     d = {}
+    if excludes is None:
+        excludes = []
     if isinstance(o, sa.util.KeyedTuple):
         d = o._asdict()
     else:
         for c in o.__table__.columns:
+            if c.name in excludes:
+                continue
             if isinstance(c.type, DateTime):
                 value = convert_datetime(getattr(o, c.name))
             elif isinstance(c, InstrumentedList):
