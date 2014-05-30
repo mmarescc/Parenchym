@@ -69,17 +69,23 @@ RE_INTERVAL_DATETIME = re.compile(
 
 class Enum(enum.Enum):
     @classmethod
-    def as_choices(cls):
+    def as_choices(cls, translate=None):
         """
         Returns members as list of 2-tuples suitable as choices for HTML select
         lists.
 
         Tuple[0] is the name of the member as string, and tuple[1] is its value.
 
+        :param translate: Optional translation function. Assumes, member's value
+            is a translation string.
         :return: Members as list of 2-tuples
         """
-        return [(name, member.value)
-            for name, member in cls.__members__.items()]
+        if translate:
+            return [(name, translate(member.value))
+                for name, member in cls.__members__.items()]
+        else:
+            return [(name, member.value)
+                for name, member in cls.__members__.items()]
 
 
 class JsonEncoder(json.JSONEncoder):
