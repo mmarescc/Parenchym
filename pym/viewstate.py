@@ -41,6 +41,57 @@ class ViewState(object):
         self.allowed_sort_dirs = ('asc', 'desc')
         """List of sort directions"""
 
+    def _fetch(self, k, default=None, required=True, multiple=False):
+        """
+        Fetches an input parameter.
+
+        :param k: Parameter to fetch from input
+        :param multiple: If true, return list, else scalar
+        :param default: Default value if ``k`` was not present
+        :param required: Raises ViewstateError if parameter is missing
+        :return: Fetched value
+        """
+        if multiple:
+            v = self.inp.getall(k)
+            if not v:
+                if required:
+                    raise ViewstateError("Missing: '{}'".format(k))
+                return default
+        else:
+            try:
+                v = self.inp[k]
+            except KeyError:
+                if required:
+                    raise ViewstateError("Missing: '{}'".format(k))
+                return default
+        return v
+
+    def fetch_int(self, k, default=None, required=True, multiple=False):
+        """
+        Fetches an input parameter as integer.
+
+        :param k: Parameter to fetch from input
+        :param multiple: If true, return list, else scalar
+        :param default: Default value if ``k`` was not present
+        :return: Int or list of ints
+        """
+        v = self._fetch(k, default=default, required=required, multiple=multiple)
+        if multiple:
+            r = []
+            for x in v:
+                try:
+                    r.append(int(x))
+                except TypeError:
+                    raise ViewstateError(
+                        "Not an integer: '{}'->'{}'".format(k, x))
+            return r
+        else:
+            try:
+                r = int(v)
+            except TypeError:
+                raise ViewstateError("Not an integer: '{}'->'{}'".format(k, v))
+        return r
+
     @property
     def inp(self):
         return self._inp
@@ -51,23 +102,21 @@ class ViewState(object):
 
     @property
     def page(self):
-        try:
-            pg = int(self.inp.get('pg', self.default_pg))
-        except TypeError:
-            raise ViewstateError("Invalid pg")
+        pg = self.fetch_int('pg', default=self.default_pg, required=False,
+            multiple=False)
+        if pg < 0:
+            raise ViewstateError('Invalid pg: {}'.format(pg))
         return pg
 
     @property
     def page_size(self):
-        try:
-            ps = int(self.inp.get('ps', self.default_ps))
-            # Constrain ps to the bounds defined in allowed_ps
-            if ps < self.allowed_ps[0]:
-                ps = self.allowed_ps[0]
-            elif ps > self.allowed_ps[-1]:
-                ps = self.allowed_ps[-1]
-        except (TypeError, ValueError):
-            raise ViewstateError("Invalid ps")
+        ps = self.fetch_int('ps', default=self.default_ps, required=False,
+            multiple=False)
+        # Constrain ps to the bounds defined in allowed_ps
+        if ps < self.allowed_ps[0]:
+            ps = self.allowed_ps[0]
+        elif ps > self.allowed_ps[-1]:
+            ps = self.allowed_ps[-1]
         return ps
 
     @property
