@@ -1,3 +1,4 @@
+import datetime
 import re
 from pym.lib import json_deserializer
 
@@ -171,8 +172,8 @@ class FilterValidator(object):
 
     @property
     def text(self):
-        q = self.parent.fetch('q', default=None, required=True, multiple=False)
-        return self.RE_WHITESPACE.sub(' ', q).strip()
+        q = self.parent.fetch('q', default=None, required=False, multiple=False)
+        return None if q is None else self.RE_WHITESPACE.sub(' ', q).strip()
 
     @property
     def field(self):
@@ -209,16 +210,34 @@ class Validator(object):
         if multiple:
             v = self.inp.getall(k)
             if not v:
+                # Parameter missing, but required
                 if required:
                     raise ValidationError("Missing: '{}'".format(k))
+                # Parameter missing, but not required --> return default
                 return default
+            # Parameter was given...
+            # ... if we need it, make sure, all elements are set
+            if required:
+                for x in v:
+                    if x is None or len(str(x)) == 0:
+                        raise ValidationError("Missing: '{}'".format(k))
         else:
             try:
                 v = self.inp[k]
             except KeyError:
+                # Parameter missing, but required
                 if required:
                     raise ValidationError("Missing: '{}'".format(k))
+                # Parameter missing, but not required
                 return default
+            # Parameter was given
+            if v is None or len(str(v)) == 0:
+                # Parameter empty, but required
+                if required:
+                    raise ValidationError("Missing: '{}'".format(k))
+                # Parameter empty, but not required
+                return default
+        # Yeah, we actually have a value
         return v
 
     def fetch_int(self, k, default=None, required=True, multiple=False):
@@ -231,20 +250,51 @@ class Validator(object):
         :return: Int or list of ints
         """
         v = self.fetch(k, default=default, required=required, multiple=multiple)
+        if v is None:
+            return None
         if multiple:
             r = []
             for x in v:
                 try:
                     r.append(int(x))
-                except TypeError:
+                except ValueError:
                     raise ValidationError(
                         "Not an integer: '{}'->'{}'".format(k, x))
             return r
         else:
             try:
                 r = int(v)
-            except TypeError:
+            except ValueError:
                 raise ValidationError("Not an integer: '{}'->'{}'".format(k, v))
+        return r
+
+    def fetch_date(self, k, default=None, required=True, multiple=False,
+            fmt='%Y-%m-%d'):
+        """
+        Fetches an input parameter as a date.
+
+        :param k: Parameter to fetch from input
+        :param multiple: If true, return list, else scalar
+        :param default: Default value if ``k`` was not present
+        :return: Date or list of dates
+        """
+        v = self.fetch(k, default=default, required=required, multiple=multiple)
+        if v is None:
+            return None
+        if multiple:
+            r = []
+            for x in v:
+                try:
+                    r.append(datetime.datetime.strptime(x, fmt).date())
+                except ValueError:
+                    raise ValidationError(
+                        "Not a date: '{}'->'{}'".format(k, x))
+            return r
+        else:
+            try:
+                r = datetime.datetime.strptime(v, fmt).date()
+            except ValueError:
+                raise ValidationError("Not a date: '{}'->'{}'".format(k, v))
         return r
 
     @property
