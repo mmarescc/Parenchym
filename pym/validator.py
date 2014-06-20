@@ -268,6 +268,50 @@ class Validator(object):
                 raise ValidationError("Not an integer: '{}'->'{}'".format(k, v))
         return r
 
+    def fetch_float(self, k, default=None, required=True, multiple=False):
+        """
+        Fetches an input parameter as float.
+
+        We use the right-most dot or comma as decimal separator.
+
+        :param k: Parameter to fetch from input
+        :param multiple: If true, return list, else scalar
+        :param default: Default value if ``k`` was not present
+        :return: Float or list of floats
+        """
+        v = self.fetch(k, default=default, required=required, multiple=multiple)
+        if v is None:
+            return None
+        if multiple:
+            r = []
+            for x in v:
+                dp = x.rfind('.')
+                cp = x.rfind(',')
+                if dp > cp:  # English: dot is right of optional commas
+                    x = x.replace(',', '')  # Need only to remove commas
+                else:  # German: comma is right of optional dots
+                    # Remove dots and replace comma with dot
+                    x = x.replace('.', '').replace(',', '.')
+                try:
+                    r.append(float(x))
+                except ValueError:
+                    raise ValidationError(
+                        "Not a float: '{}'->'{}'".format(k, x))
+            return r
+        else:
+            dp = v.rfind('.')
+            cp = v.rfind(',')
+            if dp > cp:  # English: dot is right of optional commas
+                v = v.replace(',', '')  # Need only to remove commas
+            else:  # German: comma is right of optional dots
+                # Remove dots and replace comma with dot
+                v = v.replace('.', '').replace(',', '.')
+            try:
+                r = float(v)
+            except ValueError:
+                raise ValidationError("Not a float: '{}'->'{}'".format(k, v))
+        return r
+
     def fetch_date(self, k, default=None, required=True, multiple=False,
             fmt='%Y-%m-%d'):
         """
