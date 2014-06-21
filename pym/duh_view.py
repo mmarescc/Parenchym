@@ -4,7 +4,7 @@ Utilities for view configuration
 Code borrowed from pyramid_duh by Steven Arcangeli
 https://github.com/stevearc/pyramid_duh/blob/master/pyramid_duh/view.py
 
-Removed compatibility layer to reduce dependencies, so its Py3k only.
+Removed compatibility layer to reduce dependencies, so it's Py3k only.
 """
 import fnmatch
 import re
