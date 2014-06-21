@@ -4,6 +4,7 @@
 # http://stackoverflow.com/questions/9766940/how-to-create-an-sql-view-with-sqlalchemy
 # Materialized view:
 # http://stackoverflow.com/questions/11114903/oracle-functional-index-creation
+import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -30,6 +31,7 @@ from sqlalchemy.ext.declarative import (
 )
 from sqlalchemy.sql.expression import (func)
 import sqlalchemy.engine
+from sqlalchemy.dialects.postgresql import JSON
 
 from zope.sqlalchemy import ZopeTransactionExtension
 
@@ -203,8 +205,20 @@ class DefaultMixin(object):
 
     @classmethod
     def find(cls, sess, obj):
+        """
+        Finds given object and returns its instance.
+
+        Input object may be the integer ID of a DB record, or a value that is
+        checked in IDENTITY_COL. If object is already the requested instance,
+        it is returned unchanged.
+
+        Raises NoResultFound if object is unknown.
+        """
         if isinstance(obj, int):
-            return sess.query(cls).get(obj)
+            o = sess.query(cls).get(obj)
+            if not o:
+                raise sa.orm.exc.NoResultFound()
+            return o
         elif isinstance(obj, cls):
             return obj
         else:
