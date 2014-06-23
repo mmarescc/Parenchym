@@ -1,10 +1,7 @@
 import datetime
 import re
+from pym.exc import ValidationError
 from pym.lib import json_deserializer
-
-
-class ValidationError(Exception):
-    pass
 
 
 class PagerValidator(object):

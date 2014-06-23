@@ -21,3 +21,7 @@ class SassError(PymError):
 
 class SchedulerError(PymError):
     pass
+
+
+class ValidationError(Exception):
+    pass
