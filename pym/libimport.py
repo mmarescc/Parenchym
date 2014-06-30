@@ -27,6 +27,7 @@ class ImportHelper():
             'int': 'integer',
             'float': 'decimal(14, 2)',
             'str': 'varchar(255)',
+            'NoneType': 'varchar(255)'
         }
         self.orig_cols = []
         """List of original column names"""
