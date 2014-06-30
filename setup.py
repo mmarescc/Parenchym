@@ -38,6 +38,7 @@ setup(
       main = pym:main
       [console_scripts]
       pym-init-db = pym.scripts.initialisedb:main
+      pym-import-raw = pym.scripts.import_raw:main
       pym = pym.scripts.pym:main
       """,
 )
