@@ -276,19 +276,21 @@ class Validator(object):
         :param default: Default value if ``k`` was not present
         :return: Float or list of floats
         """
+        print('fetching', k)
         v = self.fetch(k, default=default, required=required, multiple=multiple)
         if v is None:
             return None
         if multiple:
             r = []
             for x in v:
-                dp = x.rfind('.')
-                cp = x.rfind(',')
-                if dp > cp:  # English: dot is right of optional commas
-                    x = x.replace(',', '')  # Need only to remove commas
-                else:  # German: comma is right of optional dots
-                    # Remove dots and replace comma with dot
-                    x = x.replace('.', '').replace(',', '.')
+                if isinstance(x, str):
+                    dp = x.rfind('.')
+                    cp = x.rfind(',')
+                    if dp > cp:  # English: dot is right of optional commas
+                        x = x.replace(',', '')  # Need only to remove commas
+                    else:  # German: comma is right of optional dots
+                        # Remove dots and replace comma with dot
+                        x = x.replace('.', '').replace(',', '.')
                 try:
                     r.append(float(x))
                 except ValueError:
@@ -296,13 +298,14 @@ class Validator(object):
                         "Not a float: '{}'->'{}'".format(k, x))
             return r
         else:
-            dp = v.rfind('.')
-            cp = v.rfind(',')
-            if dp > cp:  # English: dot is right of optional commas
-                v = v.replace(',', '')  # Need only to remove commas
-            else:  # German: comma is right of optional dots
-                # Remove dots and replace comma with dot
-                v = v.replace('.', '').replace(',', '.')
+            if isinstance(v, str):
+                dp = v.rfind('.')
+                cp = v.rfind(',')
+                if dp > cp:  # English: dot is right of optional commas
+                    v = v.replace(',', '')  # Need only to remove commas
+                else:  # German: comma is right of optional dots
+                    # Remove dots and replace comma with dot
+                    v = v.replace('.', '').replace(',', '.')
             try:
                 r = float(v)
             except ValueError:
