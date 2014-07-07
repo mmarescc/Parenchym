@@ -6,8 +6,6 @@
 # Packages
 *.egg
 *.egg-info
-dist
-build
 eggs
 parts
 sdist
@@ -50,8 +48,6 @@ __pycache__
 *secrets.yaml
 downloads
 art
-build
-dist
 Pym.egg-info
 .coverage
 _tmp*
