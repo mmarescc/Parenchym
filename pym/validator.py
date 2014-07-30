@@ -314,7 +314,6 @@ class Validator(object):
         :param default: Default value if ``k`` was not present
         :return: Float or list of floats
         """
-        print('fetching', k)
         v = self.fetch(k, default=default, required=required, multiple=multiple)
         if v is None:
             return None
