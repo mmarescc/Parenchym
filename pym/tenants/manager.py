@@ -1,7 +1,7 @@
 import datetime
 import sqlalchemy as sa
 from pym.auth.models import User, Group, GroupMember
-from pym.auth.manager import create_group
+from pym.auth.manager import create_group, create_group_member
 from pym.auth.const import SYSTEM_UID, GROUP_KIND_TENANT
 from pym.res.models import ResourceNode
 from pym.res.const import NODE_NAME_ROOT
@@ -119,3 +119,21 @@ def collect_my_tenants(sess, user_id):
         Group.tenant_id == None
     )).all()
     return tt
+
+
+def add_user(sess, tenant, user, owner, **kwargs):
+    """
+    Adds a user to tenant's group.
+
+    :param sess: A DB session instance.
+    :param tenant: ID, ``name``, or instance of a tenant.
+    :param user: ID, ``principal``, or instance of a user.
+    :param owner: ID, ``principal``, or instance of a user.
+    """
+    ten = Tenant.find(sess, tenant)
+    g_ten = sess.query(Group).filter(
+        Group.name == ten.name,
+        Group.kind == GROUP_KIND_TENANT
+    ).one()
+    create_group_member(sess, owner, g_ten, member_user=user, **kwargs)
+    sess.flush()

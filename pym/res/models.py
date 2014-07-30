@@ -259,6 +259,11 @@ class ResourceNode(DbBase, DefaultMixin):
                     pam.Permission.name == permission
                 ).one()
                 ace.permission_id = p.id
+            elif isinstance(permission, pam.Permissions):
+                p = sess.query(pam.Permission).filter(
+                    pam.Permission.name == permission.value
+                ).one()
+                ace.permission_id = p.id
             else:
                 ace.permission_id = permission.id
 

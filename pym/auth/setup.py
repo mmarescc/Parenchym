@@ -2,7 +2,7 @@ from pym.res.models import ResourceNode
 from pym.res.const import NODE_NAME_ROOT, NODE_NAME_SYS
 from . import manager as authmgr
 from .const import *
-from .models import Permission
+from .models import Permission, Permissions
 
 
 SQL_VW_USER_BROWSE = """
@@ -364,43 +364,43 @@ def setup_permissions(sess):
     """
     p_all = Permission()
     p_all.owner_id = SYSTEM_UID
-    p_all.name = '*'
+    p_all.name = Permissions.all.value
     p_all.descr = "All permissions."
 
     p_visit = Permission()
     p_visit.owner_id = SYSTEM_UID
-    p_visit.name = 'visit'
+    p_visit.name = Permissions.visit.value
     p_visit.descr = "Permission to visit this node. This is weaker than 'read'."
 
     p_read = Permission()
     p_read.owner_id = SYSTEM_UID
-    p_read.name = 'read'
+    p_read.name = Permissions.read.value
     p_read.descr = "Permission to read this resource."
 
     p_write = Permission()
     p_write.owner_id = SYSTEM_UID
-    p_write.name = 'write'
+    p_write.name = Permissions.write.value
     p_write.descr = "Permission to write this resource."
 
     p_delete = Permission()
     p_delete.owner_id = SYSTEM_UID
-    p_delete.name = 'delete'
+    p_delete.name = Permissions.delete.value
     p_delete.descr = "Permission to delete this resource."
 
     p_admin = Permission()
     p_admin.owner_id = SYSTEM_UID
-    p_admin.name = 'admin'
+    p_admin.name = Permissions.admin.value
     p_admin.descr = "Permission to administer in general."
 
     p_admin_auth = Permission()
     p_admin_auth.owner_id = SYSTEM_UID
-    p_admin_auth.name = 'admin_auth'
+    p_admin_auth.name = Permissions.admin_auth.value
     p_admin_auth.descr = "Permission to administer authentication and "\
         "authorization, like users, groups, permissions and ACL on resources."
 
     p_admin_res = Permission()
     p_admin_res.owner_id = SYSTEM_UID
-    p_admin_res.name = 'admin_res'
+    p_admin_res.name = Permissions.admin_res.value
     p_admin_res.descr = "Permission to administer resources."
 
     p_visit.add_child(p_read)
