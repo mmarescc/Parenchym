@@ -159,6 +159,7 @@ class Cli(object):
             setup_logging=setup_logging)
 
         self._config.include(pym)
+        self._config.include('pyramid_redis')
 
         req = pyramid.request.Request.blank('/',
             base_url='http://localhost:6543')
