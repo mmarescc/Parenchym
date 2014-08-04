@@ -22,3 +22,5 @@ NODE_NAME_SYS_AUTH_PERMISSION_MGR = 'permission_mgr'
 
 GROUP_KIND_SYSTEM = 'system'
 GROUP_KIND_TENANT = 'tenant'
+
+PERM_ALL = '*'

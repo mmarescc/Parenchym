@@ -265,6 +265,44 @@ class Validator(object):
                 raise ValidationError("Not an integer: '{}'->'{}'".format(k, v))
         return r
 
+    def fetch_bool(self, k, default=None, required=True, multiple=False):
+        """
+        Fetches an input parameter as boolean.
+
+        :param k: Parameter to fetch from input
+        :param multiple: If true, return list, else scalar
+        :param default: Default value if ``k`` was not present
+        :return: Bool or list of bools
+        """
+        v = self.fetch(k, default=default, required=required, multiple=multiple)
+        if v is None:
+            return None
+        if multiple:
+            r = []
+            for x in v:
+                try:
+                    if x[0].lower() in ('t', 'true', 'on', '1'):
+                        r.append(True)
+                    elif x[0].lower() in ('f', 'false', 'off', '0'):
+                        r.append(False)
+                    else:
+                        r.append(bool(x))
+                except (TypeError, ValueError):
+                    raise ValidationError(
+                        "Not a boolean: '{}'->'{}'".format(k, x))
+            return r
+        else:
+            try:
+                if v.lower() in ('t', 'true', 'on', '1'):
+                    r = True
+                elif v[0].lower() in ('f', 'false', 'off', '0'):
+                    r = False
+                else:
+                    r = bool(v)
+            except (TypeError, ValueError):
+                raise ValidationError("Not a boolean: '{}'->'{}'".format(k, v))
+        return r
+
     def fetch_float(self, k, default=None, required=True, multiple=False):
         """
         Fetches an input parameter as float.
@@ -276,7 +314,6 @@ class Validator(object):
         :param default: Default value if ``k`` was not present
         :return: Float or list of floats
         """
-        print('fetching', k)
         v = self.fetch(k, default=default, required=required, multiple=multiple)
         if v is None:
             return None

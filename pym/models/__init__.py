@@ -4,6 +4,9 @@
 # http://stackoverflow.com/questions/9766940/how-to-create-an-sql-view-with-sqlalchemy
 # Materialized view:
 # http://stackoverflow.com/questions/11114903/oracle-functional-index-creation
+#
+# http://stackoverflow.com/questions/4617291/how-do-i-get-a-raw-compiled-sql-query-from-a-sqlalchemy-expression
+
 import datetime
 
 import sqlalchemy as sa
@@ -31,7 +34,9 @@ from sqlalchemy.ext.declarative import (
 )
 from sqlalchemy.sql.expression import (func)
 import sqlalchemy.engine
-from sqlalchemy.dialects.postgresql import JSON
+
+from psycopg2.extensions import adapt as sqlescape
+# or use the appropiate escape function from your db driver
 
 from zope.sqlalchemy import ZopeTransactionExtension
 
@@ -465,7 +470,19 @@ def attribute_names(cls, kind="all"):
             if isinstance(prop, ColumnProperty)]
     else:
         return [prop.key for prop in class_mapper(cls).iterate_properties]
+from sqlalchemy.sql import compiler
 
+
+def compile_query(query):
+    dialect = query.session.bind.dialect
+    statement = query.statement
+    comp = compiler.SQLCompiler(dialect, statement)
+    comp.compile()
+    enc = dialect.encoding
+    params = {}
+    for k, v in comp.params.items():
+        params[k] = sqlescape(v)
+    return comp.string % params
 
 # ===[ COMPILER CREATEVIEW ]=======
 
