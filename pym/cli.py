@@ -1,4 +1,6 @@
+import configparser
 import logging
+import logging.config
 import sys
 import yaml
 from collections import OrderedDict
@@ -107,9 +109,16 @@ class Cli(object):
         Loads config settings. Initialises SQLAlchemy and a session.
         """
         self.args = args
+        fn_config = os.path.abspath(args.config)
         self.rc_key = rc_key
         if setup_logging:
-            pyramid.paster.setup_logging(args.config)
+            logging.config.fileConfig(
+                fn_config,
+                dict(
+                    __file__=fn_config,
+                    here=os.path.dirname(fn_config)
+                )
+            )
         if lgg:
             self.lgg = lgg
 
@@ -117,7 +126,10 @@ class Cli(object):
         self.lgg.debug("TTY? {}".format(sys.stdout.isatty()))
         self.lgg.debug("Locale? {}, {}".format(self.lang_code, self.encoding))
 
-        settings = pyramid.paster.get_appsettings(args.config)
+        #settings = pyramid.paster.get_appsettings(args.config)
+        p = configparser.ConfigParser()
+        p.read(fn_config)
+        settings = dict(p['app:main'])
         if 'environment' not in settings:
             raise KeyError('Missing key "environment" in config. Specify '
                 'environment in INI file "{}".'.format(args.config))
@@ -147,6 +159,7 @@ class Cli(object):
             setup_logging=setup_logging)
 
         self._config.include(pym)
+        self._config.include('pyramid_redis')
 
         req = pyramid.request.Request.blank('/',
             base_url='http://localhost:6543')

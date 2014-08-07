@@ -7,6 +7,22 @@ from pym.lib import json_deserializer
 class PagerValidator(object):
 
     def __init__(self, parent):
+        """
+        Validator for parameters of a pager.
+
+        We tell which page is the current page and the page size (e.g. in rows).
+        Hence the input MultiDict is expected to have keys ``pg`` and ``ps``.
+
+        *Public properties*
+
+        ``default_page``: Page number to use as default.
+
+        ``default_page_size``: Page size to use as default.
+
+        ``allowed_page_sizes``: List of allowed pages sizes.
+
+        :param parent: Base validator, typically :class:`Validator`
+        """
         self.parent = parent
 
         self.default_page = 0
@@ -18,6 +34,14 @@ class PagerValidator(object):
 
     @property
     def page(self):
+        """
+        Fetches current page from key ``pg`` (optional, single).
+
+        If missing, we return ``default_page``.
+
+        :return: Current page
+        :raise ValidationError: If pg < 0
+        """
         pg = self.parent.fetch_int('pg', default=self.default_page,
             required=False, multiple=False)
         if pg < 0:
@@ -26,19 +50,45 @@ class PagerValidator(object):
 
     @property
     def page_size(self):
+        """
+        Fetches page size from key ``ps`` (optional, single).
+
+        If missing, we return ``default_page_size``.
+
+        :return: Page size,
+            min(allowed_page_sizes) < ps < max(allowed_page_sizes)
+        """
         ps = self.parent.fetch_int('ps', default=self.default_page_size,
             required=False, multiple=False)
         # Constrain ps to the bounds defined in allowed_page_sizes
-        if ps < self.allowed_page_sizes[0]:
-            ps = self.allowed_page_sizes[0]
-        elif ps > self.allowed_page_sizes[-1]:
-            ps = self.allowed_page_sizes[-1]
+        lb = min(self.allowed_page_sizes)
+        ub = max(self.allowed_page_sizes)
+        if ps < lb:
+            ps = lb
+        elif ps > ub:
+            ps = ub
         return ps
 
 
 class SorterValidator(object):
 
     def __init__(self, parent):
+        """
+        Validator for parameters of a sorter.
+
+        We tell which fields to sort by (e.g. in an ORDER BY clause) and their
+        directions (ASC or DESC). Hence the input MultiDict is expected to have
+        keys ``sf`` and ``sd``.
+
+        *Public properties:*
+
+        ``allowed_fields``: List of field names that we allow to be sorted.
+
+        ``allowed_directions``: Typically ``('asc', 'desc')`` but may be
+        overridden.
+
+        :param parent: Base validator, typically :class:`Validator`
+        """
         self.parent = parent
 
         self.allowed_fields = ('id', )
@@ -48,6 +98,12 @@ class SorterValidator(object):
 
     @property
     def fields(self):
+        """
+        Fetches list of field names for key ``sf`` (required, multiple).
+
+        :return: List of field names
+        :raise ValidationError: If a field is not listed in ``allowed_fields``
+        """
         sort_fields = self.parent.fetch('sf', default=None, required=True,
             multiple=True)
         for sf in sort_fields:
@@ -57,6 +113,13 @@ class SorterValidator(object):
 
     @property
     def directions(self):
+        """
+        Fetches list of sort directions from key ``sd`` (required, multiple).
+
+        :return: List of sort directions
+        :raise ValidationError: If a direction is not listed in
+            ``allowed_directions``.
+        """
         sort_dirs = [x.lower() for x in
             self.parent.fetch('sd', default=None, required=True, multiple=True)]
         for sd in sort_dirs:
@@ -70,6 +133,33 @@ class FilterValidator(object):
     RE_WHITESPACE = re.compile(r'\s+')
 
     def __init__(self, parent):
+        """
+        Validator for parameters of a filter.
+
+        A filter my be simple, consisting only of a field name and a filter
+        text, or it may be a complex expression with multiple operators and
+        nested ANDs and ORs.
+
+        *Public properties*
+
+        ``allowed_fields``: List of field names that are allowed to occur in a
+            filter expression.
+
+        ``allowed_operators``: List of allowed operators, by default these::
+
+            '=', '<', '<=', '>', '>=', 'like', '~',
+            '!=', '!like', '!~'
+            '=*', '<*', '<=*', '>*', '>=*', 'like*', '~*',
+            '!=*', '!like*', '!~*'
+
+        ``allowed_conjunctions``: List of tokens that represent conjunctions
+            ``AND`` and ``OR`` in an expression, default ``('a', 'o')``.
+
+        ``allowed_case_sensitivity``: List of tokens that represent the case
+            sensitivity flag in an expression, default ``('s', 'i')``.
+
+        :param parent: Base validator, typically :class:`Validator`
+        """
         self.parent = parent
 
         self.allowed_fields = ('id', )
@@ -89,6 +179,17 @@ class FilterValidator(object):
 
     @property
     def filter(self):
+        """
+        Fetches the filter expression from key ``fil`` (required, single).
+
+        Key ``fil`` must contain the expression as a single JSON string.
+
+        :return: Filter expression as a data structure.
+        :raise ValidationError: If key is missing or invalid.
+        """
+
+        # TODO  TESTING!!
+
         try:
             fil = self.parent.inp['fil']
         except KeyError:
@@ -96,10 +197,10 @@ class FilterValidator(object):
         try:
             fil = json_deserializer(fil)
         except ValueError:
-            raise ValidationError("Invalid filter")
+            raise ValidationError("Invalid JSON")
         # Expect be [CONJ, TAIL]
         if len(fil) != 2:
-            raise ValidationError("Invalid filter")
+            raise ValidationError("Invalid expression")
 
         aconj = self.allowed_conjunctions
         aops = self.allowed_operators
@@ -169,11 +270,25 @@ class FilterValidator(object):
 
     @property
     def text(self):
+        """
+        Fetches the filter text from key ``q`` (optional, single).
+
+        We sanitise the whitespace, i.e. we strip leading and trailing
+        whitespace and condense multiple consecutive into a single blank.
+
+        :return: The filter text, or None.
+        """
         q = self.parent.fetch('q', default=None, required=False, multiple=False)
         return None if q is None else self.RE_WHITESPACE.sub(' ', q).strip()
 
     @property
     def field(self):
+        """
+        Fetches the field name from key ``f`` (required, single).
+
+        :return: Field name
+        :raise ValidationError: If field name not listed in ``allowed_fields``.
+        """
         f = self.parent.fetch('f', default=None, required=True, multiple=False)
         if f not in self.allowed_fields:
             raise ValidationError("Invalid filter field: '{}'".format(f))
@@ -184,7 +299,19 @@ class Validator(object):
 
     def __init__(self, inp):
         """
-        Represents a validator object.
+        General validator.
+
+        We provide methods to fetch one key from the MultiDict and validate its
+        value. These methods merely cast the fetched value into a specific type.
+
+        Furthermore, we are composed of other, more specialised validator
+        objects: ``pager`` as :class:`PagerValidator`, ``sorter`` as
+        :class:`SorterValidator`, and ``filter`` as :class:`FilterValidator`.
+
+        These can be used like this::
+
+            vld = Validator(inp)
+            print('Sorted by', vld.sorter.fields)
 
         :param inp: MultiDict, e.g. ``request.GET``
         """
@@ -199,9 +326,9 @@ class Validator(object):
         Fetches an input parameter.
 
         :param k: Parameter to fetch from input
-        :param multiple: If true, return list, else scalar
         :param default: Default value if ``k`` was not present
-        :param required: Raises ValidationError if parameter is missing
+        :param required: If True, raises ValidationError if parameter is missing
+        :param multiple: If true, return list, else scalar
         :return: Fetched value
         """
         if multiple:
@@ -242,8 +369,9 @@ class Validator(object):
         Fetches an input parameter as integer.
 
         :param k: Parameter to fetch from input
-        :param multiple: If true, return list, else scalar
         :param default: Default value if ``k`` was not present
+        :param required: If True, raises ValidationError if parameter is missing
+        :param multiple: If true, return list, else scalar
         :return: Int or list of ints
         """
         v = self.fetch(k, default=default, required=required, multiple=multiple)
@@ -265,6 +393,45 @@ class Validator(object):
                 raise ValidationError("Not an integer: '{}'->'{}'".format(k, v))
         return r
 
+    def fetch_bool(self, k, default=None, required=True, multiple=False):
+        """
+        Fetches an input parameter as boolean.
+
+        :param k: Parameter to fetch from input
+        :param default: Default value if ``k`` was not present
+        :param required: If True, raises ValidationError if parameter is missing
+        :param multiple: If true, return list, else scalar
+        :return: Bool or list of bools
+        """
+        v = self.fetch(k, default=default, required=required, multiple=multiple)
+        if v is None:
+            return None
+        if multiple:
+            r = []
+            for x in v:
+                try:
+                    if x[0].lower() in ('t', 'true', 'on', '1'):
+                        r.append(True)
+                    elif x[0].lower() in ('f', 'false', 'off', '0'):
+                        r.append(False)
+                    else:
+                        r.append(bool(x))
+                except (TypeError, ValueError):
+                    raise ValidationError(
+                        "Not a boolean: '{}'->'{}'".format(k, x))
+            return r
+        else:
+            try:
+                if v.lower() in ('t', 'true', 'on', '1'):
+                    r = True
+                elif v[0].lower() in ('f', 'false', 'off', '0'):
+                    r = False
+                else:
+                    r = bool(v)
+            except (TypeError, ValueError):
+                raise ValidationError("Not a boolean: '{}'->'{}'".format(k, v))
+        return r
+
     def fetch_float(self, k, default=None, required=True, multiple=False):
         """
         Fetches an input parameter as float.
@@ -272,11 +439,11 @@ class Validator(object):
         We use the right-most dot or comma as decimal separator.
 
         :param k: Parameter to fetch from input
-        :param multiple: If true, return list, else scalar
         :param default: Default value if ``k`` was not present
+        :param required: If True, raises ValidationError if parameter is missing
+        :param multiple: If true, return list, else scalar
         :return: Float or list of floats
         """
-        print('fetching', k)
         v = self.fetch(k, default=default, required=required, multiple=multiple)
         if v is None:
             return None
@@ -318,8 +485,9 @@ class Validator(object):
         Fetches an input parameter as a date.
 
         :param k: Parameter to fetch from input
-        :param multiple: If true, return list, else scalar
         :param default: Default value if ``k`` was not present
+        :param required: If True, raises ValidationError if parameter is missing
+        :param multiple: If true, return list, else scalar
         :return: Date or list of dates
         """
         v = self.fetch(k, default=default, required=required, multiple=multiple)

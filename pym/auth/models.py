@@ -285,7 +285,8 @@ class Group(DbBase, DefaultMixin):
     )
 
     tenant_id = sa.Column(sa.Integer(),
-        sa.ForeignKey("pym.tenant.id",
+        sa.ForeignKey(
+            "pym.tenant.id",
             onupdate="CASCADE",
             ondelete="CASCADE"
         ),
@@ -312,6 +313,17 @@ class Group(DbBase, DefaultMixin):
         return "<{name}(id={id}, tenant_id={t}, name='{n}'>".format(
             id=self.id, t=self.tenant_id, n=self.name,
             name=self.__class__.__name__)
+
+
+class Permissions(pym.lib.Enum):
+    all = '*'
+    visit = 'visit'
+    read = 'read'
+    write = 'write'
+    delete = 'delete'
+    admin = 'admin'
+    admin_auth = 'admin_auth'
+    admin_res = 'admin_res'
 
 
 class Permission(DbBase, DefaultMixin):

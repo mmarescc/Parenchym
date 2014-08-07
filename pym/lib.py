@@ -555,52 +555,97 @@ class JsonResp(object):
 
     def __init__(self):
         """
-        Creates dict with status messages for a view response.
+        Constructs data structure in a standard response format for AJAX
+        services.
 
-        Add messages as simple strings. Response object will
-        have those messages suitable for PYM.growl().
+        Rationale:
+
+        If the service involves a lengthy operation, use this object as a
+        minimalistic logger on the way. If the result data is ready, add it to
+        this object too. The service view can now respond with the result data
+        and all occurred messages in a well-defined structure.
         """
         self._msgs = []
         self._is_ok = True
         self._data = None
 
     def add_msg(self, msg):
+        """
+        Adds a message of user-defined kind.
+
+        :param msg: The message
+        :type msg: Dict(kind=..., text=...)
+        """
         if msg['kind'] in ['error', 'fatal']:
             self._is_ok = False
         self._msgs.append(msg)
 
-    def notice(self, msg):
-        self.add_msg(dict(kind='notice', text=msg))
+    def notice(self, txt):
+        self.add_msg(dict(kind='notice', text=txt))
 
-    def info(self, msg):
-        self.add_msg(dict(kind='info', text=msg))
+    def info(self, txt):
+        self.add_msg(dict(kind='info', text=txt))
 
-    def warn(self, msg):
-        self.add_msg(dict(kind='warning', text=msg))
+    def warn(self, txt):
+        self.add_msg(dict(kind='warning', text=txt))
 
-    def error(self, msg):
-        self.add_msg(dict(kind='error', text=msg))
+    def error(self, txt):
+        self.add_msg(dict(kind='error', text=txt))
 
-    def fatal(self, msg):
-        self.add_msg(dict(kind='fatal', text=msg))
+    def fatal(self, txt):
+        self.add_msg(dict(kind='fatal', text=txt))
 
-    def ok(self, msg):
-        self.add_msg(dict(kind='success', text=msg))
+    def ok(self, txt):
+        self.add_msg(dict(kind='success', text=txt))
 
     def print(self):
         for m in self._msgs:
             print(m['kind'].upper(), m['text'])
 
     @property
+    def is_ok(self):
+        """
+        Returns True is no error messages are present, else False
+        """
+        return self._is_ok
+
+    @property
+    def msgs(self):
+        """
+        Returns the list of messages.
+
+        Each message is a dict with at least keys ``kind`` and ``text``. This
+        format is suitable for the PYM.growl() JavaScript.
+
+        ``kind`` is one of (notice, info, warning, error, fatal, success).
+        """
+        return self._msgs
+
+    @property
     def data(self):
+        """
+        Returns the data
+        """
         return self._data
 
     @data.setter
     def data(self, v):
+        """
+        Sets the data
+        """
         self._data = v
 
     @property
     def resp(self):
+        """
+        The response is::
+
+            resp = {
+                'ok': True/False,
+                'msgs': [ {'kind': 'success', 'text': 'foo'}, ... ]
+                'data: ... # arbitrary response data
+            }
+        """
         return dict(
             ok=self._is_ok,
             msgs=self._msgs,
